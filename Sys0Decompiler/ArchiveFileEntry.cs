@@ -142,7 +142,7 @@ namespace Sys0Decompiler
             return "FileNumber: " + this.FileNumber + " FileName: " + this.FileName + " Index: " + this.Index;
         }
 
-        static Encoding shiftJis = Encoding.GetEncoding("shift_jis");
+        static Encoding shiftJis = Encoding.GetEncoding("gbk");
 
         public void UpdateFileHeader()
         {

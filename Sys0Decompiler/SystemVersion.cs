@@ -31,7 +31,7 @@ namespace Sys0Decompiler
 		}
 
 		protected DecompilerForm parent;
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
+		private Encoding shiftJIS = Encoding.GetEncoding(936);
 
 		protected SpecialCase specialCase;
 
@@ -592,7 +592,7 @@ namespace Sys0Decompiler
 
 		public void WriteShiftJISChar(string c)
 		{
-			byte[] bytes = Encoding.GetEncoding("shift_jis").GetBytes(c);
+			byte[] bytes = Encoding.GetEncoding("gbk").GetBytes(c);
 			outputStream.Write(bytes, 0, bytes.Length);
 
 			lastMSXKana = c[0];

@@ -125,7 +125,7 @@ namespace Sys0Decompiler
             }
         }
 
-        static Encoding shiftJis = Encoding.GetEncoding("shift_jis");
+        static Encoding shiftJis = Encoding.GetEncoding("gbk");
 
         public static string ReadStringFixedSize(this BinaryReader br, int length)
         {

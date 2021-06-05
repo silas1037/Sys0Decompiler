@@ -23,7 +23,7 @@ namespace Sys0Decompiler
 		private const string FILE_AG00 = "AG00.DAT";
 		private const string FILE_ADISK = "ADISK.DAT";
 
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
+		private Encoding shiftJIS = Encoding.GetEncoding(936);
 		private SystemVersion decompileSystemVersion;
 		private SystemVersion compileSystemVersion;
 

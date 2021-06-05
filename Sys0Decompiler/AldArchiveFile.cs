@@ -818,7 +818,7 @@ namespace Sys0Decompiler
                 return headers.ToArray();
             }
 
-            static Encoding shiftJis = Encoding.GetEncoding("shift_jis");
+            static Encoding shiftJis = Encoding.GetEncoding("gbk");
 
             public static string[] GetAldFileNames(byte[][] fileHeaders)
             {
@@ -1239,7 +1239,7 @@ namespace Sys0Decompiler
                 }
             }
 
-            static Encoding shiftJisWithThrow = Encoding.GetEncoding("shift_jis", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+            static Encoding shiftJisWithThrow = Encoding.GetEncoding("gbk", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
 
             private static ArchiveFileEntry[] GetAfaFileEntries(byte[] decompressedToc, long dataBase, int entryCount, long fileSize, bool isVersion2)
             {

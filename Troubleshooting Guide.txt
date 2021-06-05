@@ -1,0 +1,62 @@
+Sys0Decompiler Troubleshooting Guide
+
+
+General Advice
+
+Bear in mind that compiled code files are numbered starting with 1, but decompiled code files are numbered starting with 0 (so dis0001.sco corresponds to page0000.adv). All references to page files in the game's code are also 0-oriented. This is an irregularity that is reflective of actual AliceSoft data and code.
+
+See the "Known Fixes" section at the end of this file for known problems specific to certain games.
+
+
+
+
+Troubleshooting Issues with Multiple Disk Files
+
+Older Alicesoft games split their code across multiple disk files entitled ADISK.DAT, BDISK.DAT, etc, depending on system. Unfortunately, this division sometimes results in strange irregularities. Examples include:
+
+    - Identical files on multiple disks.
+    - Distinct files with the same name on multiple disks.
+    - Alternate versions of specific .DAT files included on multiple disks to minimize disk-swapping (for example, Rance 1 on the X68000 contains different copies of ADISK.DAT on every disk with different data depending on the disk's needs). These may include identical or distinct files. 
+
+Not only do these potential causes make a single, unified solution for Sys0Decompiler impossible, but some can become the source of decompile errors by damaging or confusing file headers. The only solution, then, is for the end programmer to diagnose and correct the problem manually using ALDExplorer.
+
+
+Various troubleshooting suggestions include:
+
+The header errors caused by identical files on multiple disks can typically be fixed in the following fashion, which doubles as a useful first test if you are unsure if the files are identical. Using ALDDecompiler, open the source DISK files and select Import/Export -> Export All to export the compiled .SCO files to an external folder. Then, select File -> Create Empty Archive File and select a .DAT file (don't mind that the file defaults to the name ACG.DAT). Next, select Import/Export -> Import and add new files... and select the contents of the .SCO folder. Save this file as ADISK.DAT (do not overwrite the original source, just in case), and decompile this version instead of the original.
+
+If files are distinct on multiple disks, you will have to decompile them seperately and compare their output. At present, Sys0Decompiler can only decompile ADISK.DAT files followed by B, C, etc, with no way to decompile, say, BDISK.DAT directly. You will have to isolate and rename the archives to ADISK.DAT. Once you have the decompiled versions of multiple files, it will fall to you as the end programmer to resolve the issue of which code is called and when. On a hard drive with a single executible, we don't have the odd luxury of code files that can change form depending on the current "disk." 
+
+
+Known Decompile Errors with this Version of Sys0Decompiler
+
+No amount of troubleshooting in this version has been able to resolve a matter with Rance 1 on the X68000. Page jumps suggest that there is meant to be combat code on Page 10 (the equivalent of FIGHT.ADV in the 3.5 remake), but despite multiple versions of page 10 existing in the archives, none seem to contain the combat code. It is likely the code is located elsewhere, but why, and if any changes to Sys0Decompiler could account for them, is unclear. 
+
+
+MSX and PC-88 Decompile Limitations
+
+While most Alicesoft games are written using some variant or direct ancestor of Shift-JIS, this is not true on all systems. The MSX and PC-88 may use a single-byte character encoding instead. These encodings can cause problem during decompile. Once they are compiled into new-style code, these potential problems can no longer occur.
+
+
+MSX
+To make the most of the single-byte character space, MSX games use the full katakana character set and hiragana set, but both are limited to base characters, with the diacritics (dakuten and handakuten) appearing as seperate characters that appear to the right of the kana. So instead of having a distinct が (ga) character, the MSX game would display two characters: か (ka) and then ﾞ. Depending on your font, this character combination may be indistinguishbable from the real thing, but this is not universal. For clarity's sake, unless you specify otherwise in the menu, Sys0Decompiler will attempt to combine the hiragana with their diacritics to provide the accurate characters. If a diacritic appears next to an invalid character, they will be left seperate.
+
+Because the MSX doesn't intend to output in only one character set like most later systems, the Hiragana and Katakana radio button do not function.
+
+Another problem with the MSX character set is that they make ambiguous use of the EOF character (0x1A). Normally used to mark the end of a file, the MSX character set both uses 0x1A to end files and to print the character '[' to the screen. The program has to tell the two apart manually, and Sys0Decompiler is no exception. While Sys0Decompiler should handle MSX 0x1A characters correctly, if you notice obvious mistakes in the decompiled code, activate "Output Junk Code," and all EOF characters will be treated as '[' instead.
+
+
+
+System 1 Known Fixes
+
+The Windows/DOS versions of Little Vampire, Crescent Moon Girl, DPS, and the Toushin Toshi Hint Disk should decompile without additional fuss.
+
+Dangerous Tengu Legend contains what I've dubbed "junk code": code that exists beyond the EOF character that normally divides source code in an DAT archive. Page 0's junk code is actually used, which the decompiler will tell you if you decompile it. This junk code must be extracted using Advanced Settings -> Output Junk Code. I recommend the game be decompiled normally, and then junk code decompiled to a seperate folder, at which point the junk code version of Page 0 can be manually corrected into a valid code file that will replace the original (simply removing EOF and null characters should do the trick, at least in this instance).
+
+The Windows/DOS version of Intruder requires the external fix for multiple disk files described below.
+
+Versions of games for other computers may or may not require the fix depending on the product, but most seem to decompile fine. 
+
+
+System 3.0 Known Fixes
+None yet.

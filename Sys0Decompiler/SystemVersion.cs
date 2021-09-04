@@ -31,7 +31,8 @@ namespace Sys0Decompiler
 		}
 
 		protected DecompilerForm parent;
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
+		private Encoding sourceEncoding = Encoding.GetEncoding("utf-8");
+		private Encoding outputEncoding = Encoding.GetEncoding("utf-8");
 
 		protected SpecialCase specialCase;
 
@@ -207,18 +208,6 @@ namespace Sys0Decompiler
 
 		protected abstract string decompile_cali();
 		protected abstract string decompile_cali2();
-
-		public int ShiftJISCode(char c)
-		{
-			byte[] bytes = shiftJIS.GetBytes(new char[] { c });
-
-			if(bytes.Length == 1) return bytes[0];
-			// Assume it's two bytes, it shouldn't be possible for it to be more.
-			else
-			{
-				return (bytes[0] << 8) + bytes[1];
-			}
-		}
 
 		protected char CGetAndWriteChar()
 		{
@@ -524,12 +513,40 @@ namespace Sys0Decompiler
 				// message in its place.
 				if(!escapeNext && curLine[i] == '0' && curLine[i + 1] == 'x')
 				{
+					// In unicode-mode, we need to remap gaiji characters to U+E000-E0BB, and encode in UTF-8.
 					int decVal = 0;
 					if(Int32.TryParse(curLine.Substring(i+2, 4), System.Globalization.NumberStyles.HexNumber, 
 						System.Globalization.CultureInfo.InvariantCulture, out decVal))
 					{
-						WriteByte(decVal >> 8);
-						WriteByte(decVal & 0xff);
+						int index = 0;
+						if (0xeb9f <= decVal && decVal <= 0xebfc)
+						{
+							index = decVal - 0xeb9f;
+						}
+						else if (0xec40 <= decVal && decVal <= 0xec9e)
+						{
+							index = decVal - 0xec40 + 94;
+						}
+						// The GBK port uses different Gaiji area, 0xeb9f-0xebfc and 0xec40-0xec9e.
+						// This is temporary code that allows existing .ADV files for the GBK port compile without modification.
+						else if (0xff40 <= decVal && decVal <= 0xff9d)
+						{
+							index = decVal - 0xff40;
+						}
+						else if (0xff9e <= decVal && decVal <= 0xfffc)
+						{
+							index = decVal - 0xff9e + 94;
+						}
+						// Temporary code end.
+						else
+						{
+							RaiseError("0x#### outside the gaiji range.");
+						}
+
+						// Encode it as a UTF-8 character U+E000+index.
+						WriteByte(0xee);
+						WriteByte(0x80 | index >> 6);
+						WriteByte(0x80 | index & 0x3f);
 
 						i += 5;
 						count += 5;
@@ -538,7 +555,7 @@ namespace Sys0Decompiler
 					}
 				}
 
-				nextChar = shiftJIS.GetBytes(curLine[i].ToString());
+				nextChar = outputEncoding.GetBytes(curLine[i].ToString());
 				
 				foreach(byte b in nextChar)
 				{
@@ -660,7 +677,7 @@ namespace Sys0Decompiler
 				WriteText("REV");
 			}
 
-			string[] lines = File.ReadAllLines(inputFile, shiftJIS); // Read lines in Shift-JIS.
+			string[] lines = File.ReadAllLines(inputFile, sourceEncoding);
 
 			curFile = inputFile;
 			curLine = "";

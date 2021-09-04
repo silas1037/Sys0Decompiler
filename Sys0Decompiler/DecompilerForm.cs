@@ -23,7 +23,8 @@ namespace Sys0Decompiler
 		private const string FILE_AG00 = "AG00.DAT";
 		private const string FILE_ADISK = "ADISK.DAT";
 
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
+		private Encoding sourceEncoding = Encoding.GetEncoding("utf-8");
+		private Encoding outputEncoding = Encoding.GetEncoding("utf-8");
 		private SystemVersion decompileSystemVersion;
 		private SystemVersion compileSystemVersion;
 
@@ -574,13 +575,13 @@ namespace Sys0Decompiler
 				if(File.Exists((Path.Combine(directoryName, FILE_VERBS))))
 				{
 					lines.AddRange(File.ReadAllLines(directoryName + Path.DirectorySeparatorChar + FILE_VERBS,
-						shiftJIS));
+						sourceEncoding));
 					verbCount = lines.Count - 1;
 				}
 				if(File.Exists((Path.Combine(directoryName, FILE_OBJECTS))))
 				{
 					lines.AddRange(File.ReadAllLines(directoryName + Path.DirectorySeparatorChar + FILE_OBJECTS,
-						shiftJIS));
+						sourceEncoding));
 					if(lines[lines.Count - 1] == "") lines.RemoveAt(lines.Count - 1);
 					objectCount = lines.Count - verbCount - 1;
 				}
@@ -592,7 +593,7 @@ namespace Sys0Decompiler
 					// Start the output file with its opening line, containing the vector sizes and two unknown and 
 					// probably unused variables that we will set to 0.
 					lines[0] = "0," + verbCount + "," + objectCount + ",0";
-					File.WriteAllLines(a00File, lines, shiftJIS);
+					File.WriteAllLines(a00File, lines, outputEncoding);
 				}
 
 

@@ -24,7 +24,7 @@ namespace Sys0Decompiler
 		private const string FILE_ADISK = "ADISK.DAT";
 
 		private Encoding sourceEncoding = Encoding.GetEncoding("utf-8");
-		private Encoding outputEncoding = Encoding.GetEncoding("utf-8");
+		private Encoding outputEncoding = new System.Text.UTF8Encoding(false);  // UTF-8 without BOM.
 		private SystemVersion decompileSystemVersion;
 		private SystemVersion compileSystemVersion;
 

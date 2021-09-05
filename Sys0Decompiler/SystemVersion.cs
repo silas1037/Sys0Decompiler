@@ -32,7 +32,7 @@ namespace Sys0Decompiler
 
 		protected DecompilerForm parent;
 		private Encoding sourceEncoding = Encoding.GetEncoding("utf-8");
-		private Encoding outputEncoding = Encoding.GetEncoding("utf-8");
+		private Encoding outputEncoding = new System.Text.UTF8Encoding(false);  // UTF-8 without BOM.
 
 		protected SpecialCase specialCase;
 

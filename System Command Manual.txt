@@ -139,7 +139,7 @@ Here's my best attempt to understand System 1's commands. Note that most of the 
 	
 	F - Jumps back to the start of the current file. Does not use a closing colon.
 	
-	G - G idNum: - Loads (and displays) a CG with no transparency. Special provisions for Intruder. CG index must be a constant in System 1.
+	G - G idNum: - Loads and displays a CG with no transparency. Special provisions for Intruder. CG idNum must be a constant in System 1.
 	
 	L - L slot: - Loads a saved game from the given slot. Slots 1-26 available. System 1's slot number must be a constant.
 	

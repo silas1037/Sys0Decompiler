@@ -31,7 +31,6 @@ namespace Sys0Decompiler
 		}
 
 		protected DecompilerForm parent;
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
 
 		protected SpecialCase specialCase;
 
@@ -40,7 +39,7 @@ namespace Sys0Decompiler
 		private int curLineNum;
 		protected string curLine;
 		protected int curColumn;
-		protected bool newStyle = false;
+		protected bool deprecated_newStyleTag = false;
 		protected bool foundFirstMenu;
 		//protected UInt16 curAddress;
 
@@ -55,6 +54,7 @@ namespace Sys0Decompiler
 		private int linkSector;
 		private int dataSector;
 		protected int curPage;
+		protected int curDisk;
 		protected char activeTextOutput = ' ';
 		protected int nestingLevel = 0;
 		protected List<int> labelAddresses;
@@ -207,18 +207,6 @@ namespace Sys0Decompiler
 
 		protected abstract string decompile_cali();
 		protected abstract string decompile_cali2();
-
-		public int ShiftJISCode(char c)
-		{
-			byte[] bytes = shiftJIS.GetBytes(new char[] { c });
-
-			if(bytes.Length == 1) return bytes[0];
-			// Assume it's two bytes, it shouldn't be possible for it to be more.
-			else
-			{
-				return (bytes[0] << 8) + bytes[1];
-			}
-		}
 
 		protected char CGetAndWriteChar()
 		{
@@ -522,14 +510,51 @@ namespace Sys0Decompiler
 				// Gaiji. Process any message text starting with 0x and followed by four digits (and not exited 
 				// at any point using a \ character) by directly inserting the two bytes it describes into the
 				// message in its place.
-				if(!escapeNext && curLine[i] == '0' && curLine[i + 1] == 'x')
+				if((!escapeNext && curLine[i] == 'G' && curLine[i + 1] == '+') ||
+					(!escapeNext && curLine[i] == '0' && curLine[i + 1] == 'x'))
 				{
+					// In unicode-mode, we need to remap gaiji characters to U+E000-E0BB, and encode in UTF-8.
 					int decVal = 0;
 					if(Int32.TryParse(curLine.Substring(i+2, 4), System.Globalization.NumberStyles.HexNumber, 
 						System.Globalization.CultureInfo.InvariantCulture, out decVal))
 					{
-						WriteByte(decVal >> 8);
-						WriteByte(decVal & 0xff);
+						if(parent.CurCompileOutMode == DecompilerForm.SourceEncodingMode.ShiftJIS)
+						{
+							WriteByte(decVal >> 8);
+							WriteByte(decVal & 0xff);
+						}
+						else if(parent.CurCompileOutMode == DecompilerForm.SourceEncodingMode.UTF8)
+						{
+							int index = 0;
+							if(0xeb9f <= decVal && decVal <= 0xebfc)
+							{
+								index = decVal - 0xeb9f;
+							}
+							else if(0xec40 <= decVal && decVal <= 0xec9e)
+							{
+								index = decVal - 0xec40 + 94;
+							}
+							// The GBK port uses different Gaiji area, 0xeb9f-0xebfc and 0xec40-0xec9e.
+							// This is temporary code that allows existing .ADV files for the GBK port compile without modification.
+							else if(0xff40 <= decVal && decVal <= 0xff9d)
+							{
+								index = decVal - 0xff40;
+							}
+							else if(0xff9e <= decVal && decVal <= 0xfffc)
+							{
+								index = decVal - 0xff9e + 94;
+							}
+							// Temporary code end.
+							else
+							{
+								RaiseError("U+#### outside the gaiji range.");
+							}
+
+							// Encode it as a UTF-8 character U+E000+index.
+							WriteByte(0xee);
+							WriteByte(0x80 | index >> 6);
+							WriteByte(0x80 | index & 0x3f);
+						}
 
 						i += 5;
 						count += 5;
@@ -538,7 +563,7 @@ namespace Sys0Decompiler
 					}
 				}
 
-				nextChar = shiftJIS.GetBytes(curLine[i].ToString());
+				nextChar = parent.CompileOutputEncoding.GetBytes(curLine[i].ToString());
 				
 				foreach(byte b in nextChar)
 				{
@@ -654,13 +679,7 @@ namespace Sys0Decompiler
 			// at the end of this function if the former is never called.
 			outputStream.Seek(2, SeekOrigin.Begin);
 
-			// If this is the first output file, attach a tag indicating that this will be a new-format DAT file.
-			if(inputFile.Contains("0000") && parent.TagNewStyle())
-			{
-				WriteText("REV");
-			}
-
-			string[] lines = File.ReadAllLines(inputFile, shiftJIS); // Read lines in Shift-JIS.
+			string[] lines = File.ReadAllLines(inputFile, parent.CompileSourceEncoding); // Read lines in Shift-JIS.
 
 			curFile = inputFile;
 			curLine = "";
@@ -1394,12 +1413,13 @@ namespace Sys0Decompiler
 
 
 		// Decompiling.
-		public bool SetDecompileDisk(string diskFile)
+		public bool SetDecompileDisk(string diskFile, int diskNum)
 		{
 			try
 			{
 				decompileInput = File.OpenRead(diskFile);
 				decompileDirectory = Path.GetDirectoryName(diskFile);
+				curDisk = diskNum;
 			}
 			catch(DirectoryNotFoundException ex)
 			{
@@ -1417,7 +1437,7 @@ namespace Sys0Decompiler
 			dataSector = decompileInput.ReadByte();
 			dataSector |= decompileInput.ReadByte() << 8;
 
-			newStyle = false;
+			deprecated_newStyleTag = false;
 
 			return true;
 		}
@@ -1537,7 +1557,19 @@ namespace Sys0Decompiler
 		{
 			if(decompileMode == DecompileModeType.SuddenEOF) return;
 
-			if(!newStyle)
+			byte d = DGetByte();
+
+			if(d == '\'' || d == '"')
+			{  // SysEng
+				char c;
+				while((c = DGetChar()) != delimeter && decompileMode != DecompileModeType.SuddenEOF)
+				{
+					if(c == '\\')
+						c = DGetChar();
+					ProcessMessageChar(c, true);
+				}
+			}
+			else
 			{
 				// Old-style text params do not necessarily use quotes. For example, M commands are in the format 
 				// "M [newString]:" with the colon character demarking the end of the string. As a consequence,
@@ -1545,19 +1577,10 @@ namespace Sys0Decompiler
 				//
 				// Another unusual thing about text params in old style is that they don't run through the same
 				// checks as message params (ProcessMessageChar()), and so CAN include Latin characters (such as for 
-				// use with data file changes). The only processing involved is whether or not the the character
-				// is two-byte.
-				while(true)
+				// use with data file changes) and CAN'T include Gaiji. The only processing involved is whether or
+				// not the the character is two-byte.
+				while(d != delimeter)
 				{
-					/*char c = DGetChar();
-					if(c == delimeter)
-						break;
-
-					ProcessMessageChar(c, true);*/
-
-					byte d = DGetByte();
-					if(d == delimeter) break;
-
 					if(DecompileMode == DecompileModeType.ProcessCode)
 					{
 						if((0x81 <= d && d <= 0x9f) || 0xe0 <= d)
@@ -1571,24 +1594,9 @@ namespace Sys0Decompiler
 							WriteByte(d);
 						}
 					}
-				}
-			}
-			else
-			{
-				// New-style text params enclose the string in quotes, with the usual provisions for output text
-				// in quotes, like using \' or \" to include the quote in the string itself. Besides being 
-				// consistent, this allows the string to include the colon character.
-				//
-				// To repeat our example, M commands appear in the format "M '[newstring]':"
-				char msgDelimeter = DGetChar();
 
-				// Make sure the character we just collected is a quote.
-				if(msgDelimeter != '"' && msgDelimeter != '\'')
-				{
-					RaiseError("New-style text param not followed by quote mark.");
+					d = DGetByte();
 				}
-
-				DWriteNewStyleMessage(msgDelimeter, true);
 			}
 		}
 
@@ -1947,23 +1955,21 @@ namespace Sys0Decompiler
 		{
 			if(decompileMode == DecompileModeType.SuddenEOF) return false;
 
-			// Shift JIS handling. The AG00 file always uses Shift-JIS.
-			if(parent.CurSourceEncoding == DecompilerForm.SourceEncoding.ShiftJIS)
+			// Shift JIS handling.
+			if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.ShiftJIS)
 			{
 				// Valid single-byte character.
-				if(c == 0x20 || (0xa1 <= c && c <= 0xdd) || (newStyle && c <= 0x80))
+				if(c <= 0x80 || (0xa1 <= c && c <= 0xdd))
 				{
 					if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
 					{
-						startTextLine();
+						StartTextLine();
 					}
 
 					if(decompileMode == DecompileModeType.ProcessCode || decompileMode == DecompileModeType.AG00)
 					{
-						//byte[] bytes = shiftJIS.GetBytes(new char[] { parent.CharToTextMode(c) });
-						//foreach(byte b in bytes) WriteByte(b);
-						// If we are dealing with characters outside of the ASCII character space, convert them
-						// to the current text mode.
+						// If we are dealing with ShiftJIS characters outside of the ASCII character space,
+						// convert them to the current text mode.
 						int code;
 
 						// Leave ASCII text as ASCII text.
@@ -1976,7 +1982,6 @@ namespace Sys0Decompiler
 						{
 							code = CharToTextMode(c);
 						}
-
 						if(code > 255)
 						{
 							WriteByte(code >> 8);
@@ -1993,7 +1998,7 @@ namespace Sys0Decompiler
 				{
 					if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
 					{
-						startTextLine();
+						StartTextLine();
 					}
 
 					// message (2 bytes)
@@ -2013,10 +2018,13 @@ namespace Sys0Decompiler
 						// Gaiji. Gaiji are externally defined characters (defined in GAIJI.DAT) that no longer exist 
 						// as a part of the Shift-JIS standard. We have to output their codes differently or else text 
 						// editors will replace them with "best guesses." For this reason, we'll output the number as
-						// "0x####" instead of the individual bytes.
+						// "G+####" instead of the individual bytes.
+						// 
+						// We used to use 0x instead of G+. The compiler still recognizes the old form but the
+						// decompiler will no longer produce it.
 						if((0xeb9f <= code && code <= 0xebfc) || (0xec40 <= code && code <= 0xec9e))
 						{
-							WriteText("0x" + code.ToString("X4"));
+							WriteText("G+" + code.ToString("X4"));
 						}
 
 						// Regular two-byte characters. Just output them as-is.
@@ -2048,31 +2056,27 @@ namespace Sys0Decompiler
 					}
 					else
 					{
-						if(decompileMode == DecompileModeType.AG00)
-						{
-							RaiseError("Unknown text output: \"" + c + "\" at AG00 byte index " + parent.FileIndex +
-								"." + Environment.NewLine);
-						}
-						else
-						{
-							RaiseError("Unknown text output: \"" + c + "\" at page " + curPage + " addr " +
-								scenarioAddress + "." + Environment.NewLine);
-						}
+						RaiseError("Unknown text output: \"" + c + "\" at page " + curPage + " addr " +
+							scenarioAddress + "." + Environment.NewLine);
 						return false;
 					}
 				}
 			}
-			else if(parent.CurSourceEncoding == DecompilerForm.SourceEncoding.PC88)
+			else if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.UTF8)
 			{
-				// All MSX/PC88 characters are single-byte, which signifies things immensely.
+				// TODO
+			}
+			else if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX)
+			{
+				// All MSX/PC88 characters are single-byte, which simplifies things immensely.
 				if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
 				{
-					startTextLine();
+					StartTextLine();
 				}
 
 				if(decompileMode == DecompileModeType.AG00 || decompileMode == DecompileModeType.ProcessCode)
 				{
-					return processPC88Encoding(c, overrideNewline);
+					return processMSXEncoding(c, overrideNewline);
 				}
 				
 			}
@@ -2106,14 +2110,16 @@ namespace Sys0Decompiler
 			}
 
 			// A??.DAT以外にリンクされている場合はファイルを開き直す
-			if(diskIndex != 1)
+			if(diskIndex != curDisk)
 			{
+
 				string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 				string diskFile = alphabet[diskIndex - 1] + "DISK.DAT";
 
 				try
 				{
 					decompileInput = File.OpenRead(Path.Combine(decompileDirectory, diskFile));
+					curDisk = diskIndex;
 				}
 
 				catch(DirectoryNotFoundException ex)
@@ -2195,7 +2201,7 @@ namespace Sys0Decompiler
 			{
 				if(scenarioData[2] == 'R' && scenarioData[3] == 'E' && scenarioData[4] == 'V')
 				{
-					newStyle = true;
+					deprecated_newStyleTag = true;
 				}
 			}
 
@@ -2236,7 +2242,7 @@ namespace Sys0Decompiler
 			// Output warnings if there are any labels or branch ends supposedly outside of EOF. We cannot do this
 			// on MSX due to ambiguity with the EOF character, which means there is unfortunately no way to
 			// warn the user about potential problems. The manual should address this.
-			if(parent.CurSourceEncoding != DecompilerForm.SourceEncoding.PC88)
+			if(parent.CurDecompileSourceMode != DecompilerForm.SourceEncodingMode.MSX)
 			{
 				if(firstEOF < 0)
 				{
@@ -2334,7 +2340,7 @@ namespace Sys0Decompiler
 			scenarioAddress = 2;
 			
 			// Move past the REV tag on the first page if we're in new mode.
-			if(newStyle && curPage == 0) scenarioAddress = 5;
+			if(deprecated_newStyleTag && curPage == 0) scenarioAddress = 5;
 
 			fatalError = false;
 
@@ -2379,7 +2385,7 @@ namespace Sys0Decompiler
 				{
 					if(scenarioAddress >= labelAddresses[curLabelAddress])
 					{
-						startLine();
+						StartLine();
 						WriteText("*lbl" + labelAddresses[curLabelAddress].ToString("X") + ":" +
 							Environment.NewLine);
 
@@ -2399,7 +2405,7 @@ namespace Sys0Decompiler
 				// Because the MSX versions make ambiguous use of the EOF character, we can't output it or any
 				// NUL characters that follow until we can confirm they're actually INSIDE the file. This happens
 				// the moment we get any other command.
-				if(parent.CurSourceEncoding == DecompilerForm.SourceEncoding.PC88 && msxEOFBuffer.Length > 0)
+				if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX && msxEOFBuffer.Length > 0)
 				{
 					if(cmd != '\0' && cmd != 0x1A)
 					{
@@ -2522,6 +2528,10 @@ namespace Sys0Decompiler
 				case 'Z':
 					decompile_cmd_z();
 					break;
+				case '\'':
+				case '"':
+					DWriteNewStyleMessage(cmd);
+					break;
 				default:
 					// Sometimes, you find "bubbles" of null characters in the gaps between functions due, I 
 					// presume, to mis-assigned label jumps. So you might have valid code ending with a label 
@@ -2534,8 +2544,8 @@ namespace Sys0Decompiler
 					{
 						if(decompileMode == DecompileModeType.ProcessCode)
 						{
-							// In MSX mode, NUL characters are message text - specifically, spaces.
-							if(parent.CurSourceEncoding == DecompilerForm.SourceEncoding.PC88 && !newStyle)
+							// In MSX mode, NUL characters are message text: specifically, spaces.
+							if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX)
 							{
 								// However, NUL characters should not be written if we have an active EOF Buffer.
 								// This happens because of an ambiguity with the EOF character, see below for
@@ -2558,92 +2568,45 @@ namespace Sys0Decompiler
 						}
 					}
 
-					else if(!newStyle)
+					// End of File
+					else if(cmd == 0x1A)
 					{
-						if(cmd == 0x27)
+						// On MSX, 0x1A is both the EOF character and the '[' message character depending on
+						// context. In most situations, we should treat it as a '[', but if all the following
+						// characters are NUL, we should drop them all. For this reason, unless Enable Junk
+						// Code is active, we'll store the characters in a buffer and only output them if
+						// anything else follows.
+						if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX &&
+							!parent.OutputJunk())
 						{
-							// Single quote, insert an escape character in front of it.
-							if(activeTextOutput == ' ')
-							{
-								startTextLine();
-							}
-
-							if(decompileMode == DecompileModeType.ProcessCode)
-							{
-								WriteByte('\\');
-								WriteByte('\'');
-							}
-						}
-						// End of File
-						else if(cmd == 0x1A)
-						{
-							// On MSX, 0x1A is both the EOF character and the '[' message character. In most
-							// situations, we should treat it as a '[', but if all the following characters
-							// are NUL, we should drop them all. For this reason, unless Enable Junk Code is
-							// active, we'll store the characters in a buffer and only output them if anything
-							// else follows.
-							if(parent.CurSourceEncoding == DecompilerForm.SourceEncoding.PC88 &&
-								!parent.OutputJunk())
-							{
-								msxEOFBuffer += cmd;
-							}
-							else
-							{
-								startLine();
-
-								endOfFile = true;
-
-								if(firstEOF == -1) firstEOF = scenarioAddress;
-
-								if(parent.OutputJunk())
-								{
-									junkCodeMode = true;
-
-									if(decompileMode == DecompileModeType.ProcessCode)
-										WriteByte(cmd);
-								}
-
-								//if(decompileMode == DecompileModeType.ProcessCode)
-								// Write the EOF character in old style.
-								//WriteByte(cmd);
-							}
+							msxEOFBuffer += cmd;
 						}
 						else
 						{
-							bool res = ProcessMessageChar(cmd);
-							if(!res)
-								return false;
-						}
-					}
-					else
-					{
-						if(cmd == 0x22 || cmd == 0x27)
-						{
-							DWriteNewStyleMessage(cmd);
-						}
-						else if(cmd == 0x1A)
-						{
-							startLine();
+							StartLine();
 
 							endOfFile = true;
 
 							if(firstEOF == -1) firstEOF = scenarioAddress;
 
-							// New Style code sure shouldn't have junk code but I'm not going to stop anyone
-							// from checking.
 							if(parent.OutputJunk())
 							{
 								junkCodeMode = true;
-								WriteByte(cmd);
+
+								if(decompileMode == DecompileModeType.ProcessCode)
+									WriteByte(cmd);
 							}
 						}
-						else
-						{
-							RaiseError("Unknown command: \"" + cmd + "\" at page " + curPage + " addr " +
-								scenarioAddress + Environment.NewLine);
-							return false;
-						}
 					}
+
+					else
+					{
+						// Old-style message, or error.
+						bool res = ProcessMessageChar(cmd);
+						if(!res)
+							return false;
+					}
+
 					break;
 				}
 
@@ -2655,7 +2618,7 @@ namespace Sys0Decompiler
 			return true;
 		}
 
-		protected void startLine()
+		protected void StartLine()
 		{
 			// End text output, if applicable.
 			if(activeTextOutput != ' ')
@@ -2672,7 +2635,7 @@ namespace Sys0Decompiler
 				WriteText(new string(' ', nestingLevel * 4));
 		}
 
-		protected void startTextLine()
+		protected void StartTextLine()
 		{
 			activeTextOutput = '"';
 
@@ -2849,7 +2812,7 @@ namespace Sys0Decompiler
 
 
 
-		private bool processPC88Encoding(char c, bool overrideNewline)
+		private bool processMSXEncoding(char c, bool overrideNewline)
 		{
 			int charVal = Convert.ToInt32(c);
 

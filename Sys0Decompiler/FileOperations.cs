@@ -2,18 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Text;
-using FreeImageAPI;
 using System.Diagnostics;
-using DDW.Swf;
-using System.Windows.Forms;
 
 namespace Sys0Decompiler
 {
-    /// <summary>
-    /// Settings for FileOperations when running in Console Mode
-    /// </summary>
-    public class ConsoleModeArguments
+	/// <summary>
+	/// Settings for FileOperations when running in Console Mode
+	/// </summary>
+	public class ConsoleModeArguments
     {
         /// <summary>
         /// When opening an archive file, use this filename

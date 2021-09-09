@@ -23,7 +23,6 @@ namespace Sys0Decompiler
 		private const string FILE_AG00 = "AG00.DAT";
 		private const string FILE_ADISK = "ADISK.DAT";
 
-		private Encoding shiftJIS = Encoding.GetEncoding(932);
 		private SystemVersion decompileSystemVersion;
 		private SystemVersion compileSystemVersion;
 
@@ -37,12 +36,24 @@ namespace Sys0Decompiler
 		}
 		public TextMode CurTextMode { get; set; }
 
-		public enum SourceEncoding
+		// Because MSX encoding isn't a standard C# encoding, we have to check across two steps: which mode
+		// are we in, and if we're in a standard mode, which SourceEncoding object should we use. During MSX
+		// mode, the SourceEncoding object should never be used.
+		public enum SourceEncodingMode
 		{
 			ShiftJIS,
-			PC88
+			UTF8,
+			MSX
 		}
-		public SourceEncoding CurSourceEncoding { get; set; }
+		public SourceEncodingMode CurDecompileSourceMode { get; set; }
+		private Encoding DecompileSourceEncoding { get; set; }
+		private Encoding DecompileOutputEncoding { get; set; }
+
+
+		// While we cannot compile to MSX, we maintain the enum for internal consistency.
+		public SourceEncodingMode CurCompileOutMode { get; set; }
+		public Encoding CompileSourceEncoding { get; set; }
+		public Encoding CompileOutputEncoding { get; set; }
 
 		/// <summary>
 		/// The set of loaded archive files, must stay in sync with fileOperations.loadedArchiveFiles
@@ -218,7 +229,7 @@ namespace Sys0Decompiler
 			List<string> saveData = new List<string> {
 				tabCtrlMain.SelectedIndex.ToString(), txtDecompileSrcDir.Text, txtDecompileTargetDir.Text,
 				txtCompileSrcDir.Text, txtCompileTargetDir.Text, Convert.ToString(tlsOutputJunk.Checked),
-				Convert.ToString(tlsNoTag.Checked), Convert.ToString(tlsDCmd.Checked) };
+				Convert.ToString(tlsDCmd.Checked) };
 
 			// Decompile radio buttons.
 			// System Version.
@@ -258,6 +269,38 @@ namespace Sys0Decompiler
 				saveData.Add("0");
 			}
 
+			// Decompile source encoding.
+			if(rdoDecompileSourceShiftJIS.Checked)
+			{
+				saveData.Add("1");
+			}
+			else if(rdoDecompileSourceUTF8.Checked)
+			{
+				saveData.Add("2");
+			}
+			else if(rdoDecompileSourceMSX.Checked)
+			{
+				saveData.Add("3");
+			}
+			else
+			{
+				saveData.Add("0");
+			}
+
+			// Decompile output encoding.
+			if(rdoDecompileOutShiftJIS.Checked)
+			{
+				saveData.Add("1");
+			}
+			else if(rdoDecompileOutUTF8.Checked)
+			{
+				saveData.Add("2");
+			}
+			else
+			{
+				saveData.Add("0");
+			}
+
 			// Decompile charset
 			if(rdoHiragana.Checked)
 			{
@@ -270,20 +313,6 @@ namespace Sys0Decompiler
 			else if(rdoRaw.Checked)
 			{
 				saveData.Add("3");
-			}
-			else
-			{
-				saveData.Add("0");
-			}
-
-			// Decompile source encoding.
-			if(rdoShiftJIS.Checked)
-			{
-				saveData.Add("1");
-			}
-			else if(rdoPC88.Checked)
-			{
-				saveData.Add("2");
 			}
 			else
 			{
@@ -304,6 +333,34 @@ namespace Sys0Decompiler
 			else if(rdoCompileSys3.Checked)
 			{
 				saveData.Add("3");
+			}
+			else
+			{
+				saveData.Add("0");
+			}
+
+			// Compile source encoding.
+			if(rdoCompileSourceShiftJIS.Checked)
+			{
+				saveData.Add("1");
+			}
+			else if(rdoCompileSourceUTF8.Checked)
+			{
+				saveData.Add("2");
+			}
+			else
+			{
+				saveData.Add("0");
+			}
+
+			// Compile output encoding.
+			if(rdoCompileOutShiftJIS.Checked)
+			{
+				saveData.Add("1");
+			}
+			else if(rdoCompileOutUTF8.Checked)
+			{
+				saveData.Add("2");
 			}
 			else
 			{
@@ -339,7 +396,7 @@ namespace Sys0Decompiler
 			{
 				string[] vars = File.ReadAllLines(fileName);
 
-				if(vars.Length == 14)
+				if(vars.Length == 16)
 				{
 					int tabIndex;
 					bool indexCorrect = Int32.TryParse(vars[0], out tabIndex);
@@ -355,8 +412,7 @@ namespace Sys0Decompiler
 					try
 					{
 						tlsOutputJunk.Checked = Convert.ToBoolean(vars[5]);
-						tlsNoTag.Checked = Convert.ToBoolean(vars[6]);
-						tlsDCmd.Checked = Convert.ToBoolean(vars[7]);
+						tlsDCmd.Checked = Convert.ToBoolean(vars[6]);
 					}
 					catch(System.FormatException ex)
 					{
@@ -365,62 +421,87 @@ namespace Sys0Decompiler
 
 					// Decompile radio buttons. Ignore 0s.
 					// System Version
-					if(vars[8] == "1") {
+					if(vars[7] == "1") {
 						rdoDecompileSys1.Checked = true;
 					}
-					else if(vars[8] == "2") {
+					else if(vars[7] == "2") {
 						rdoDecompileSys2.Checked = true;
 					}
-					else if(vars[8] == "3") {
+					else if(vars[7] == "3") {
 						rdoDecompileSys3.Checked = true;
 					}
 
 					// Decompile pages/verbobjs.
-					if(vars[9] == "1")
+					if(vars[8] == "1")
 					{
 						rdoDecompileOptAll.Checked = true;
 					}
-					else if(vars[9] == "2")
+					else if(vars[8] == "2")
 					{
 						rdoDecompileOptPages.Checked = true;
 					}
-					else if(vars[9] == "3")
+					else if(vars[8] == "3")
 					{
 						rdoDecompileOptVerbobjs.Checked = true;
 					}
 
-					// Decompile charset.
-					if(vars[10] == "1")
-					{
-						rdoHiragana.Checked = true;
-					}
-					else if(vars[10] == "2")
-					{
-						rdoKatakana.Checked = true;
-					}
-					else if(vars[10] == "3")
-					{
-						rdoRaw.Checked = true;
-					}
-
 					// Decompile source encoding.
-					if(vars[11] == "1")
+					if(vars[9] == "1")
 					{
-						rdoShiftJIS.Checked = true;
+						rdoDecompileSourceShiftJIS.Checked = true;
+
+						rdoDecompileOutShiftJIS.Enabled = true;
 
 						rdoHiragana.Enabled = true;
 						rdoKatakana.Enabled = true;
 						rdoRaw.Enabled = true;
 						tlsDiacritic.Enabled = false;
 					}
-					else if(vars[11] == "2")
+					else if(vars[9] == "2")
 					{
-						rdoPC88.Checked = true;
+						rdoDecompileSourceUTF8.Checked = true;
+
+						rdoDecompileOutShiftJIS.Enabled = false;
+
+						rdoHiragana.Enabled = true;
+						rdoKatakana.Enabled = true;
+						rdoRaw.Enabled = true;
+						tlsDiacritic.Enabled = false;
+					}
+					else if(vars[9] == "3")
+					{
+						rdoDecompileSourceMSX.Checked = true;
+
+						rdoDecompileOutShiftJIS.Enabled = true;
 
 						rdoHiragana.Enabled = false;
 						rdoKatakana.Enabled = false;
 						rdoRaw.Enabled = false;
 						tlsDiacritic.Enabled = true;
+					}
+
+					// Decompile output encoding.
+					if(vars[10] == "1")
+					{
+						rdoDecompileOutShiftJIS.Checked = true;
+					}
+					else if(vars[10] == "2")
+					{
+						rdoDecompileOutUTF8.Checked = true;
+					}
+
+					// Decompile charset.
+					if(vars[11] == "1")
+					{
+						rdoHiragana.Checked = true;
+					}
+					else if(vars[11] == "2")
+					{
+						rdoKatakana.Checked = true;
+					}
+					else if(vars[11] == "3")
+					{
+						rdoRaw.Checked = true;
 					}
 
 
@@ -450,6 +531,28 @@ namespace Sys0Decompiler
 						rdoCompileOptVerbobjs.Checked = true;
 					}
 
+					// Decompile source encoding.
+					if(vars[14] == "1")
+					{
+						rdoCompileSourceShiftJIS.Checked = true;
+						rdoCompileOutShiftJIS.Enabled = true;
+					}
+					else if(vars[14] == "2")
+					{
+						rdoCompileSourceUTF8.Checked = true;
+						rdoCompileOutShiftJIS.Enabled = false;
+					}
+
+					// Decompile output encoding.
+					if(vars[15] == "1")
+					{
+						rdoCompileOutShiftJIS.Checked = true;
+					}
+					else if(vars[15] == "2")
+					{
+						rdoCompileOutUTF8.Checked = true;
+					}
+
 					ChangeTab();
 				}
 				else
@@ -463,8 +566,8 @@ namespace Sys0Decompiler
 		{
 			MessageBox.Show("This program is used to decompile Alicesoft System 1, System 2, and System 3.0 data " +
 				"files, and can compile them into a new format for localization. For System 3.5 games, see " +
-				"Sys3Decompiler by SomeLoliCatgirl.\n\nThe program will save your current settings on close and " +
-				"will load on boot.", "General Help");
+				"xsys3c by kichikuo or Sys3Decompiler by SomeLoliCatgirl.\n\nThe program will save your current " +
+				"settings on close and will load on boot.", "General Help");
 		}
 
 		private void decompileHelpToolStripMenuItem_Click(object sender, EventArgs e)
@@ -477,8 +580,7 @@ namespace Sys0Decompiler
 				"(zankaku for hiragana, hankaku for katakana). During decompilation, the user can choose to decompile " +
 				"kana to either hiragana or katakana, or to keep the text in whatever format it had during compilation." +
 				"Machine translators prefer hiragana text. For readability purposes, ASCII characters will always " +
-				"decompile their hankaku (ASCII) variants, and the localization team should mine to code English " +
-				"text in hankaku in-game.",
+				"decompile their hankaku (ASCII) variants.",
 				"Decompile Help");
 		}
 
@@ -543,6 +645,26 @@ namespace Sys0Decompiler
 			compileSystemVersion.Initialize();
 			compileSystemVersion.DecompileMode = SystemVersion.DecompileModeType.NotDecompiling;
 
+			if(rdoCompileSourceShiftJIS.Checked)
+			{
+				CompileSourceEncoding = Encoding.GetEncoding(932);
+			}
+			else
+			{
+				CompileSourceEncoding = Encoding.GetEncoding("utf-8");
+			}
+
+			if(rdoCompileOutShiftJIS.Checked)
+			{
+				CompileOutputEncoding = Encoding.GetEncoding(932);
+				CurCompileOutMode = SourceEncodingMode.ShiftJIS;
+			}
+			else
+			{
+				CompileOutputEncoding = new System.Text.UTF8Encoding(false);  // UTF-8 without BOM.
+				CurCompileOutMode = SourceEncodingMode.UTF8;
+			}
+
 			string directoryName = txtCompileSrcDir.Text;
 
 			if(!Directory.Exists(directoryName))
@@ -574,13 +696,13 @@ namespace Sys0Decompiler
 				if(File.Exists((Path.Combine(directoryName, FILE_VERBS))))
 				{
 					lines.AddRange(File.ReadAllLines(directoryName + Path.DirectorySeparatorChar + FILE_VERBS,
-						shiftJIS));
+						CompileSourceEncoding));
 					verbCount = lines.Count - 1;
 				}
 				if(File.Exists((Path.Combine(directoryName, FILE_OBJECTS))))
 				{
 					lines.AddRange(File.ReadAllLines(directoryName + Path.DirectorySeparatorChar + FILE_OBJECTS,
-						shiftJIS));
+						CompileSourceEncoding));
 					if(lines[lines.Count - 1] == "") lines.RemoveAt(lines.Count - 1);
 					objectCount = lines.Count - verbCount - 1;
 				}
@@ -592,7 +714,7 @@ namespace Sys0Decompiler
 					// Start the output file with its opening line, containing the vector sizes and two unknown and 
 					// probably unused variables that we will set to 0.
 					lines[0] = "0," + verbCount + "," + objectCount + ",0";
-					File.WriteAllLines(a00File, lines, shiftJIS);
+					File.WriteAllLines(a00File, lines, CompileOutputEncoding);
 				}
 
 
@@ -714,8 +836,21 @@ namespace Sys0Decompiler
 			else if(rdoHiragana.Checked) CurTextMode = TextMode.Hiragana;
 			else CurTextMode = TextMode.Katakana;
 
-			if(rdoShiftJIS.Checked) CurSourceEncoding = SourceEncoding.ShiftJIS;
-			else CurSourceEncoding = SourceEncoding.PC88;
+			if(rdoDecompileSourceShiftJIS.Checked)
+			{
+				CurDecompileSourceMode = SourceEncodingMode.ShiftJIS;
+				DecompileSourceEncoding = Encoding.GetEncoding(932);
+			}
+			else if(rdoDecompileSourceUTF8.Checked)
+			{
+				CurDecompileSourceMode = SourceEncodingMode.UTF8;
+				DecompileSourceEncoding = Encoding.GetEncoding("utf-8");
+			}
+			else
+			{
+				CurDecompileSourceMode = SourceEncodingMode.MSX;
+				DecompileSourceEncoding = null;
+			}
 
 			SetDecompileSystemVersion();
 			decompileSystemVersion.Initialize();
@@ -809,47 +944,17 @@ namespace Sys0Decompiler
 					decompileSystemVersion.ProcessMessageChar(Convert.ToChar(code));
 				}
 			}
-
-
-			/*List<string> lines = File.ReadAllLines(ag00, shiftJIS).ToList();
-			string[] directory = lines[0].Split(',');
-			int totalVerbs = Int32.Parse(directory[1]);
-			int totalObjects = Int32.Parse(directory[2]);
-
-			string replacementLine = "";
-
-			if(!rdoRaw.Checked)
-			{
-				for(int i = 1; i < lines.Count; i++)
-				{
-					foreach(char c in lines[i])
-					{
-						replacementLine += Convert.ToChar(CharToTextMode(c));
-					}
-					lines[i] = replacementLine;
-					replacementLine = "";
-				}
-			}
-
-			List<string> verbs = lines.GetRange(1, totalVerbs);
-			List<string> objects = lines.GetRange(totalVerbs + 1, totalObjects);
-
-			// Output both files in Shift-JIS.
-			string verbFile = Path.Combine(codeDirectoryName, FILE_VERBS);
-			string objectFile = Path.Combine(codeDirectoryName, FILE_OBJECTS);
-
-			File.WriteAllLines(verbFile, verbs, shiftJIS);
-			File.WriteAllLines(objectFile, objects, shiftJIS);*/
 		}
 		
 
 		private void DecompileDisk(string directoryName, string codeDirectoryName)
 		{
-			bool loaded = decompileSystemVersion.SetDecompileDisk(Path.Combine(directoryName, FILE_ADISK));
+			bool loaded = decompileSystemVersion.SetDecompileDisk(Path.Combine(directoryName, FILE_ADISK), 1);
 
 			if(!loaded) return;
 
 			bool fatal_error = false;
+
 			int curPage = -1;
 
 			while(!fatal_error)
@@ -1027,28 +1132,6 @@ namespace Sys0Decompiler
 			return tlsOutputJunk.Checked;
 		}
 
-		private void TlsNoTag_Click(object sender, EventArgs e)
-		{
-			if(!tlsNoTag.Checked)
-			{
-				if(MessageBox.Show("This feature should only be enabled as part of the debugging process for " +
-					"Sys0Decompiler itself. It should otherwise be left untouched. Enable anyways?", "Warning", 
-					MessageBoxButtons.YesNo) == DialogResult.Yes)
-				{
-					tlsNoTag.Checked = true;
-				}
-			}
-			else
-			{
-				tlsNoTag.Checked = false;
-			}
-		}
-
-		public bool TagNewStyle()
-		{
-			return !tlsNoTag.Checked;
-		}
-
 		private void use3ParamDCommandToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			if(!tlsDCmd.Checked)
@@ -1144,6 +1227,35 @@ namespace Sys0Decompiler
 		public bool FullLabels()
 		{
 			return rdoFullLabel.Checked;
+		}
+
+		private void rdoCompileSourceUTF8_CheckedChanged(object sender, EventArgs e)
+		{
+			if(rdoCompileSourceUTF8.Checked)
+			{
+				rdoCompileOutShiftJIS.Checked = false;
+				rdoCompileOutUTF8.Checked = true;
+				rdoCompileOutShiftJIS.Enabled = false;
+			}
+			else
+			{
+				rdoCompileOutShiftJIS.Enabled = true;
+			}
+		}
+
+		private void rdoDecompileSourceUTF8_CheckedChanged(object sender, EventArgs e)
+		{
+
+			if(rdoDecompileSourceUTF8.Checked)
+			{
+				rdoDecompileOutShiftJIS.Checked = false;
+				rdoDecompileOutUTF8.Checked = true;
+				rdoDecompileOutShiftJIS.Enabled = false;
+			}
+			else
+			{
+				rdoDecompileOutShiftJIS.Enabled = true;
+			}
 		}
 	}
 }

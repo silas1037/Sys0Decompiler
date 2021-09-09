@@ -503,7 +503,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_calc()
 		{
 			// !
-			startLine();
+			StartLine();
 
 			int index = DGetByte();
 			if(0x80 <= index && index <= 0xbf)
@@ -525,7 +525,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_branch()
 		{
 			// { 
-			startLine();
+			StartLine();
 
 			string condition = decompile_cali();
 			int endAddr = DGetWord();
@@ -561,7 +561,7 @@ namespace Sys0Decompiler
 			nestingLevel--;
 			if(nestingLevel < 0) nestingLevel = 0;
 
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText('}' + Environment.NewLine);
@@ -570,7 +570,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_label_jump()
 		{
 			// @
-			startLine();
+			StartLine();
 
 			int next_addr = DGetWord();
 
@@ -596,7 +596,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_label_call()
 		{
 			// \
-			startLine();
+			StartLine();
 
 			int next_addr = DGetWord();
 
@@ -635,7 +635,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_page_jump()
 		{
 			// &
-			startLine();
+			StartLine();
 
 			string next_page = decompile_cali();
 
@@ -646,7 +646,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_page_call()
 		{
 			// %
-			startLine();
+			StartLine();
 
 			string next_page = decompile_cali();
 
@@ -658,7 +658,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_set_menu()
 		{
 			// $
-			startLine();
+			StartLine();
 
 			if(!activeSetMenu)
 			{
@@ -701,7 +701,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_open_menu()
 		{
 			// [
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText("]" + Environment.NewLine);
@@ -713,7 +713,7 @@ namespace Sys0Decompiler
 		protected override void decompile_cmd_set_verbobj()
 		{
 			// :
-			startLine();
+			StartLine();
 
 			int verb = DGetByte();
 			int obj = DGetByte();
@@ -741,7 +741,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_set_verbobj2()
 		{
-			startLine();
+			StartLine();
 
 			string condition = decompile_cali();
 			int verb = DGetByte();
@@ -770,7 +770,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_a()
 		{
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText("A" + Environment.NewLine);
@@ -778,7 +778,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_b()
 		{
-			startLine();
+			StartLine();
 
 			byte cmd = DGetByte();
 			string index = decompile_cali();
@@ -800,7 +800,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_e()
 		{
-			startLine();
+			StartLine();
 
 			string index = decompile_cali();
 			//byte color;
@@ -834,7 +834,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_f()
 		{
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText("F" + Environment.NewLine);
@@ -842,7 +842,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_g()
 		{
-			startLine();
+			StartLine();
 
 			string page = decompile_cali();
 
@@ -852,7 +852,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_h()
 		{
-			startLine();
+			StartLine();
 
 			byte length = DGetByte();
 			string val = decompile_cali();
@@ -863,7 +863,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_i()
 		{
-			startLine();
+			StartLine();
 
 			string sx = decompile_cali();
 			string sy = decompile_cali();
@@ -879,7 +879,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_j()
 		{
-			startLine();
+			StartLine();
 
 			string x = decompile_cali();
 			string y = decompile_cali();
@@ -890,7 +890,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_k()
 		{
-			startLine();
+			StartLine();
 
 			byte cmd = DGetByte();
 
@@ -900,7 +900,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_l()
 		{
-			startLine();
+			StartLine();
 
 			string index = decompile_cali();
 
@@ -910,7 +910,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_m()
 		{
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText("M '");
@@ -925,7 +925,7 @@ namespace Sys0Decompiler
 		{
 			RaiseDummiedCommandWarning("N");
 
-			startLine();
+			StartLine();
 
 			// Toshiya dummies N commands, so throw a warning if they appear. He does document them to the
 			// extent that we know their params, so there should not be any errors.
@@ -939,7 +939,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_o()
 		{
-			startLine();
+			StartLine();
 
 			//byte cmd;
 			string cmd;
@@ -979,7 +979,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_p()
 		{
-			startLine();
+			StartLine();
 
 			string index = decompile_cali();
 			string r = decompile_cali();
@@ -992,7 +992,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_q()
 		{
-			startLine();
+			StartLine();
 
 			string index = decompile_cali();
 
@@ -1002,7 +1002,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_r()
 		{
-			startLine();
+			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText("R" + Environment.NewLine);
@@ -1010,7 +1010,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_s()
 		{
-			startLine();
+			StartLine();
 
 			int page = DGetByte();
 
@@ -1020,7 +1020,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_t()
 		{
-			startLine();
+			StartLine();
 
 			string x = decompile_cali();
 			string y = decompile_cali();
@@ -1031,7 +1031,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_u()
 		{
-			startLine();
+			StartLine();
 
 			string page = decompile_cali();
 			string transparent = decompile_cali();
@@ -1042,7 +1042,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_v()
 		{
-			startLine();
+			StartLine();
 
 			string cmd = decompile_cali();
 			string index = decompile_cali();
@@ -1053,7 +1053,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_w()
 		{
-			startLine();
+			StartLine();
 
 			string x = decompile_cali();
 			string y = decompile_cali();
@@ -1082,7 +1082,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_x()
 		{
-			startLine();
+			StartLine();
 
 			int index = DGetByte();
 
@@ -1092,7 +1092,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_y()
 		{
-			startLine();
+			StartLine();
 
 			string cmd = decompile_cali();
 			string param = decompile_cali();
@@ -1117,7 +1117,7 @@ namespace Sys0Decompiler
 
 		protected override void decompile_cmd_z()
 		{
-			startLine();
+			StartLine();
 
 			if(specialCase != SpecialCase.Patton)
 			{

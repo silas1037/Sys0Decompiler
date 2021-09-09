@@ -39,7 +39,6 @@
 			this.tlsExit = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsAdvanced = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsOutputJunk = new System.Windows.Forms.ToolStripMenuItem();
-			this.tlsNoTag = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsDCmd = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsDiacritic = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsHelpMenu = new System.Windows.Forms.ToolStripMenuItem();
@@ -53,9 +52,10 @@
 			this.grpVarFormat = new System.Windows.Forms.GroupBox();
 			this.rdoVAROnly = new System.Windows.Forms.RadioButton();
 			this.rdoFullLabel = new System.Windows.Forms.RadioButton();
-			this.grpSourceEncoding = new System.Windows.Forms.GroupBox();
-			this.rdoPC88 = new System.Windows.Forms.RadioButton();
-			this.rdoShiftJIS = new System.Windows.Forms.RadioButton();
+			this.grpDecompileSource = new System.Windows.Forms.GroupBox();
+			this.rdoDecompileSourceUTF8 = new System.Windows.Forms.RadioButton();
+			this.rdoDecompileSourceMSX = new System.Windows.Forms.RadioButton();
+			this.rdoDecompileSourceShiftJIS = new System.Windows.Forms.RadioButton();
 			this.grpTextMode = new System.Windows.Forms.GroupBox();
 			this.rdoRaw = new System.Windows.Forms.RadioButton();
 			this.rdoKatakana = new System.Windows.Forms.RadioButton();
@@ -77,6 +77,12 @@
 			this.txtDecompileSrcDir = new System.Windows.Forms.TextBox();
 			this.lblDecompileSrcDir = new System.Windows.Forms.Label();
 			this.tabCompile = new System.Windows.Forms.TabPage();
+			this.grpCOut = new System.Windows.Forms.GroupBox();
+			this.rdoCompileOutUTF8 = new System.Windows.Forms.RadioButton();
+			this.rdoCompileOutShiftJIS = new System.Windows.Forms.RadioButton();
+			this.grpCSource = new System.Windows.Forms.GroupBox();
+			this.rdoCompileSourceUTF8 = new System.Windows.Forms.RadioButton();
+			this.rdoCompileSourceShiftJIS = new System.Windows.Forms.RadioButton();
 			this.btnRevDecompileToCompile = new System.Windows.Forms.Button();
 			this.chkDeleteTemp = new System.Windows.Forms.CheckBox();
 			this.grpCompileSysVer = new System.Windows.Forms.GroupBox();
@@ -94,17 +100,23 @@
 			this.btnCompileSrcDir = new System.Windows.Forms.Button();
 			this.txtCompileSrcDir = new System.Windows.Forms.TextBox();
 			this.lblCompileSrcDir = new System.Windows.Forms.Label();
+			this.rdoDecompileOutShiftJIS = new System.Windows.Forms.RadioButton();
+			this.rdoDecompileOutUTF8 = new System.Windows.Forms.RadioButton();
+			this.grpDecompileOut = new System.Windows.Forms.GroupBox();
 			this.menuStrip1.SuspendLayout();
 			this.tabCtrlMain.SuspendLayout();
 			this.tabDecompile.SuspendLayout();
 			this.grpVarFormat.SuspendLayout();
-			this.grpSourceEncoding.SuspendLayout();
+			this.grpDecompileSource.SuspendLayout();
 			this.grpTextMode.SuspendLayout();
 			this.grpDecompileSysVer.SuspendLayout();
 			this.grpDecompileOpts.SuspendLayout();
 			this.tabCompile.SuspendLayout();
+			this.grpCOut.SuspendLayout();
+			this.grpCSource.SuspendLayout();
 			this.grpCompileSysVer.SuspendLayout();
 			this.grpCompileOpts.SuspendLayout();
+			this.grpDecompileOut.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// menuStrip1
@@ -135,38 +147,38 @@
 			// tlsSavePref
 			// 
 			this.tlsSavePref.Name = "tlsSavePref";
-			this.tlsSavePref.Size = new System.Drawing.Size(180, 22);
+			this.tlsSavePref.Size = new System.Drawing.Size(155, 22);
 			this.tlsSavePref.Text = "&Save Settings";
 			this.tlsSavePref.Click += new System.EventHandler(this.TlsSavePref_Click);
 			// 
 			// toolStripSeparator2
 			// 
 			this.toolStripSeparator2.Name = "toolStripSeparator2";
-			this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+			this.toolStripSeparator2.Size = new System.Drawing.Size(152, 6);
 			// 
 			// tlsImportSettings
 			// 
 			this.tlsImportSettings.Name = "tlsImportSettings";
-			this.tlsImportSettings.Size = new System.Drawing.Size(180, 22);
+			this.tlsImportSettings.Size = new System.Drawing.Size(155, 22);
 			this.tlsImportSettings.Text = "&Import Settings";
 			this.tlsImportSettings.Click += new System.EventHandler(this.ImportSettingsToolstrip_Click);
 			// 
 			// tlsExportSettings
 			// 
 			this.tlsExportSettings.Name = "tlsExportSettings";
-			this.tlsExportSettings.Size = new System.Drawing.Size(180, 22);
+			this.tlsExportSettings.Size = new System.Drawing.Size(155, 22);
 			this.tlsExportSettings.Text = "&Export Settings";
 			this.tlsExportSettings.Click += new System.EventHandler(this.ExportToolstrip_Click);
 			// 
 			// toolStripSeparator1
 			// 
 			this.toolStripSeparator1.Name = "toolStripSeparator1";
-			this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
+			this.toolStripSeparator1.Size = new System.Drawing.Size(152, 6);
 			// 
 			// tlsExit
 			// 
 			this.tlsExit.Name = "tlsExit";
-			this.tlsExit.Size = new System.Drawing.Size(180, 22);
+			this.tlsExit.Size = new System.Drawing.Size(155, 22);
 			this.tlsExit.Text = "E&xit";
 			this.tlsExit.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
 			// 
@@ -174,7 +186,6 @@
 			// 
 			this.tlsAdvanced.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.tlsOutputJunk,
-            this.tlsNoTag,
             this.tlsDCmd,
             this.tlsDiacritic});
 			this.tlsAdvanced.Name = "tlsAdvanced";
@@ -187,13 +198,6 @@
 			this.tlsOutputJunk.Size = new System.Drawing.Size(219, 22);
 			this.tlsOutputJunk.Text = "Output Junk Code";
 			this.tlsOutputJunk.Click += new System.EventHandler(this.outputJunkCodeToolStripMenuItem_Click);
-			// 
-			// tlsNoTag
-			// 
-			this.tlsNoTag.Name = "tlsNoTag";
-			this.tlsNoTag.Size = new System.Drawing.Size(219, 22);
-			this.tlsNoTag.Text = "Remove New-Style Tag";
-			this.tlsNoTag.Click += new System.EventHandler(this.TlsNoTag_Click);
 			// 
 			// tlsDCmd
 			// 
@@ -227,33 +231,33 @@
 			// tlsGeneralHelp
 			// 
 			this.tlsGeneralHelp.Name = "tlsGeneralHelp";
-			this.tlsGeneralHelp.Size = new System.Drawing.Size(180, 22);
+			this.tlsGeneralHelp.Size = new System.Drawing.Size(159, 22);
 			this.tlsGeneralHelp.Text = "General Help";
 			this.tlsGeneralHelp.Click += new System.EventHandler(this.GeneralHelpToolstrip_Click);
 			// 
 			// tlsDecompileHelp
 			// 
 			this.tlsDecompileHelp.Name = "tlsDecompileHelp";
-			this.tlsDecompileHelp.Size = new System.Drawing.Size(180, 22);
+			this.tlsDecompileHelp.Size = new System.Drawing.Size(159, 22);
 			this.tlsDecompileHelp.Text = "Decompile Help";
 			this.tlsDecompileHelp.Click += new System.EventHandler(this.decompileHelpToolStripMenuItem_Click);
 			// 
 			// tlsCompileHelp
 			// 
 			this.tlsCompileHelp.Name = "tlsCompileHelp";
-			this.tlsCompileHelp.Size = new System.Drawing.Size(180, 22);
+			this.tlsCompileHelp.Size = new System.Drawing.Size(159, 22);
 			this.tlsCompileHelp.Text = "Compile Help";
 			this.tlsCompileHelp.Click += new System.EventHandler(this.compileHelpToolStripMenuItem_Click);
 			// 
 			// toolStripSeparator3
 			// 
 			this.toolStripSeparator3.Name = "toolStripSeparator3";
-			this.toolStripSeparator3.Size = new System.Drawing.Size(177, 6);
+			this.toolStripSeparator3.Size = new System.Drawing.Size(156, 6);
 			// 
 			// tlsAbout
 			// 
 			this.tlsAbout.Name = "tlsAbout";
-			this.tlsAbout.Size = new System.Drawing.Size(180, 22);
+			this.tlsAbout.Size = new System.Drawing.Size(159, 22);
 			this.tlsAbout.Text = "About";
 			this.tlsAbout.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
 			// 
@@ -264,14 +268,15 @@
 			this.tabCtrlMain.Location = new System.Drawing.Point(3, 27);
 			this.tabCtrlMain.Name = "tabCtrlMain";
 			this.tabCtrlMain.SelectedIndex = 0;
-			this.tabCtrlMain.Size = new System.Drawing.Size(481, 308);
+			this.tabCtrlMain.Size = new System.Drawing.Size(481, 323);
 			this.tabCtrlMain.TabIndex = 4;
 			this.tabCtrlMain.SelectedIndexChanged += new System.EventHandler(this.tabCtrlMain_SelectedIndexChanged);
 			// 
 			// tabDecompile
 			// 
+			this.tabDecompile.Controls.Add(this.grpDecompileOut);
 			this.tabDecompile.Controls.Add(this.grpVarFormat);
-			this.tabDecompile.Controls.Add(this.grpSourceEncoding);
+			this.tabDecompile.Controls.Add(this.grpDecompileSource);
 			this.tabDecompile.Controls.Add(this.grpTextMode);
 			this.tabDecompile.Controls.Add(this.btnRevCompileToDecompile);
 			this.tabDecompile.Controls.Add(this.grpDecompileSysVer);
@@ -286,7 +291,7 @@
 			this.tabDecompile.Location = new System.Drawing.Point(4, 22);
 			this.tabDecompile.Name = "tabDecompile";
 			this.tabDecompile.Padding = new System.Windows.Forms.Padding(3);
-			this.tabDecompile.Size = new System.Drawing.Size(473, 282);
+			this.tabDecompile.Size = new System.Drawing.Size(473, 297);
 			this.tabDecompile.TabIndex = 0;
 			this.tabDecompile.Text = "Decompile";
 			this.tabDecompile.UseVisualStyleBackColor = true;
@@ -295,9 +300,9 @@
 			// 
 			this.grpVarFormat.Controls.Add(this.rdoVAROnly);
 			this.grpVarFormat.Controls.Add(this.rdoFullLabel);
-			this.grpVarFormat.Location = new System.Drawing.Point(232, 166);
+			this.grpVarFormat.Location = new System.Drawing.Point(309, 165);
 			this.grpVarFormat.Name = "grpVarFormat";
-			this.grpVarFormat.Size = new System.Drawing.Size(233, 76);
+			this.grpVarFormat.Size = new System.Drawing.Size(156, 95);
 			this.grpVarFormat.TabIndex = 14;
 			this.grpVarFormat.TabStop = false;
 			this.grpVarFormat.Text = "Variable Format";
@@ -305,7 +310,7 @@
 			// rdoVAROnly
 			// 
 			this.rdoVAROnly.AutoSize = true;
-			this.rdoVAROnly.Location = new System.Drawing.Point(7, 46);
+			this.rdoVAROnly.Location = new System.Drawing.Point(9, 43);
 			this.rdoVAROnly.Name = "rdoVAROnly";
 			this.rdoVAROnly.Size = new System.Drawing.Size(115, 17);
 			this.rdoVAROnly.TabIndex = 1;
@@ -316,7 +321,7 @@
 			// 
 			this.rdoFullLabel.AutoSize = true;
 			this.rdoFullLabel.Checked = true;
-			this.rdoFullLabel.Location = new System.Drawing.Point(7, 22);
+			this.rdoFullLabel.Location = new System.Drawing.Point(9, 20);
 			this.rdoFullLabel.Name = "rdoFullLabel";
 			this.rdoFullLabel.Size = new System.Drawing.Size(89, 17);
 			this.rdoFullLabel.TabIndex = 0;
@@ -324,41 +329,52 @@
 			this.rdoFullLabel.Text = "Full Label Set";
 			this.rdoFullLabel.UseVisualStyleBackColor = true;
 			// 
-			// grpSourceEncoding
+			// grpDecompileSource
 			// 
-			this.grpSourceEncoding.Controls.Add(this.rdoPC88);
-			this.grpSourceEncoding.Controls.Add(this.rdoShiftJIS);
-			this.grpSourceEncoding.Location = new System.Drawing.Point(10, 166);
-			this.grpSourceEncoding.Name = "grpSourceEncoding";
-			this.grpSourceEncoding.Size = new System.Drawing.Size(216, 76);
-			this.grpSourceEncoding.TabIndex = 13;
-			this.grpSourceEncoding.TabStop = false;
-			this.grpSourceEncoding.Text = "Source Encoding (Original Source Only)";
+			this.grpDecompileSource.Controls.Add(this.rdoDecompileSourceUTF8);
+			this.grpDecompileSource.Controls.Add(this.rdoDecompileSourceMSX);
+			this.grpDecompileSource.Controls.Add(this.rdoDecompileSourceShiftJIS);
+			this.grpDecompileSource.Location = new System.Drawing.Point(10, 165);
+			this.grpDecompileSource.Name = "grpDecompileSource";
+			this.grpDecompileSource.Size = new System.Drawing.Size(112, 95);
+			this.grpDecompileSource.TabIndex = 13;
+			this.grpDecompileSource.TabStop = false;
+			this.grpDecompileSource.Text = "Game Encoding";
 			// 
-			// rdoPC88
+			// rdoDecompileSourceUTF8
 			// 
-			this.rdoPC88.AutoSize = true;
-			this.rdoPC88.Location = new System.Drawing.Point(7, 46);
-			this.rdoPC88.Name = "rdoPC88";
-			this.rdoPC88.Size = new System.Drawing.Size(145, 17);
-			this.rdoPC88.TabIndex = 1;
-			this.rdoPC88.TabStop = true;
-			this.rdoPC88.Text = "Single-Byte (PC-88, MSX)";
-			this.rdoPC88.UseVisualStyleBackColor = true;
-			this.rdoPC88.CheckedChanged += new System.EventHandler(this.rdoPC88_CheckedChanged);
+			this.rdoDecompileSourceUTF8.AutoSize = true;
+			this.rdoDecompileSourceUTF8.Location = new System.Drawing.Point(7, 43);
+			this.rdoDecompileSourceUTF8.Name = "rdoDecompileSourceUTF8";
+			this.rdoDecompileSourceUTF8.Size = new System.Drawing.Size(55, 17);
+			this.rdoDecompileSourceUTF8.TabIndex = 1;
+			this.rdoDecompileSourceUTF8.Text = "UTF-8";
+			this.rdoDecompileSourceUTF8.UseVisualStyleBackColor = true;
+			this.rdoDecompileSourceUTF8.CheckedChanged += new System.EventHandler(this.rdoDecompileSourceUTF8_CheckedChanged);
 			// 
-			// rdoShiftJIS
+			// rdoDecompileSourceMSX
 			// 
-			this.rdoShiftJIS.AutoSize = true;
-			this.rdoShiftJIS.Checked = true;
-			this.rdoShiftJIS.Location = new System.Drawing.Point(7, 22);
-			this.rdoShiftJIS.Name = "rdoShiftJIS";
-			this.rdoShiftJIS.Size = new System.Drawing.Size(64, 17);
-			this.rdoShiftJIS.TabIndex = 0;
-			this.rdoShiftJIS.TabStop = true;
-			this.rdoShiftJIS.Text = "Shift-JIS";
-			this.rdoShiftJIS.UseVisualStyleBackColor = true;
-			this.rdoShiftJIS.CheckedChanged += new System.EventHandler(this.rdoShiftJIS_CheckedChanged);
+			this.rdoDecompileSourceMSX.AutoSize = true;
+			this.rdoDecompileSourceMSX.Location = new System.Drawing.Point(7, 66);
+			this.rdoDecompileSourceMSX.Name = "rdoDecompileSourceMSX";
+			this.rdoDecompileSourceMSX.Size = new System.Drawing.Size(99, 17);
+			this.rdoDecompileSourceMSX.TabIndex = 2;
+			this.rdoDecompileSourceMSX.Text = "MSX (Unstable)";
+			this.rdoDecompileSourceMSX.UseVisualStyleBackColor = true;
+			this.rdoDecompileSourceMSX.CheckedChanged += new System.EventHandler(this.rdoPC88_CheckedChanged);
+			// 
+			// rdoDecompileSourceShiftJIS
+			// 
+			this.rdoDecompileSourceShiftJIS.AutoSize = true;
+			this.rdoDecompileSourceShiftJIS.Checked = true;
+			this.rdoDecompileSourceShiftJIS.Location = new System.Drawing.Point(7, 20);
+			this.rdoDecompileSourceShiftJIS.Name = "rdoDecompileSourceShiftJIS";
+			this.rdoDecompileSourceShiftJIS.Size = new System.Drawing.Size(64, 17);
+			this.rdoDecompileSourceShiftJIS.TabIndex = 0;
+			this.rdoDecompileSourceShiftJIS.TabStop = true;
+			this.rdoDecompileSourceShiftJIS.Text = "Shift-JIS";
+			this.rdoDecompileSourceShiftJIS.UseVisualStyleBackColor = true;
+			this.rdoDecompileSourceShiftJIS.CheckedChanged += new System.EventHandler(this.rdoShiftJIS_CheckedChanged);
 			// 
 			// grpTextMode
 			// 
@@ -375,7 +391,7 @@
 			// rdoRaw
 			// 
 			this.rdoRaw.AutoSize = true;
-			this.rdoRaw.Location = new System.Drawing.Point(16, 66);
+			this.rdoRaw.Location = new System.Drawing.Point(9, 66);
 			this.rdoRaw.Name = "rdoRaw";
 			this.rdoRaw.Size = new System.Drawing.Size(71, 17);
 			this.rdoRaw.TabIndex = 2;
@@ -385,7 +401,7 @@
 			// rdoKatakana
 			// 
 			this.rdoKatakana.AutoSize = true;
-			this.rdoKatakana.Location = new System.Drawing.Point(16, 43);
+			this.rdoKatakana.Location = new System.Drawing.Point(9, 43);
 			this.rdoKatakana.Name = "rdoKatakana";
 			this.rdoKatakana.Size = new System.Drawing.Size(126, 17);
 			this.rdoKatakana.TabIndex = 1;
@@ -396,7 +412,7 @@
 			// 
 			this.rdoHiragana.AutoSize = true;
 			this.rdoHiragana.Checked = true;
-			this.rdoHiragana.Location = new System.Drawing.Point(16, 20);
+			this.rdoHiragana.Location = new System.Drawing.Point(9, 20);
 			this.rdoHiragana.Name = "rdoHiragana";
 			this.rdoHiragana.Size = new System.Drawing.Size(122, 17);
 			this.rdoHiragana.TabIndex = 0;
@@ -406,7 +422,7 @@
 			// 
 			// btnRevCompileToDecompile
 			// 
-			this.btnRevCompileToDecompile.Location = new System.Drawing.Point(10, 248);
+			this.btnRevCompileToDecompile.Location = new System.Drawing.Point(10, 267);
 			this.btnRevCompileToDecompile.Name = "btnRevCompileToDecompile";
 			this.btnRevCompileToDecompile.Size = new System.Drawing.Size(168, 23);
 			this.btnRevCompileToDecompile.TabIndex = 12;
@@ -421,7 +437,7 @@
 			this.grpDecompileSysVer.Controls.Add(this.rdoDecompileSys1);
 			this.grpDecompileSysVer.Location = new System.Drawing.Point(10, 64);
 			this.grpDecompileSysVer.Name = "grpDecompileSysVer";
-			this.grpDecompileSysVer.Size = new System.Drawing.Size(105, 95);
+			this.grpDecompileSysVer.Size = new System.Drawing.Size(112, 95);
 			this.grpDecompileSysVer.TabIndex = 9;
 			this.grpDecompileSysVer.TabStop = false;
 			this.grpDecompileSysVer.Text = "System Version";
@@ -463,7 +479,7 @@
 			// 
 			// btnBeginDecompile
 			// 
-			this.btnBeginDecompile.Location = new System.Drawing.Point(379, 248);
+			this.btnBeginDecompile.Location = new System.Drawing.Point(381, 267);
 			this.btnBeginDecompile.Name = "btnBeginDecompile";
 			this.btnBeginDecompile.Size = new System.Drawing.Size(86, 23);
 			this.btnBeginDecompile.TabIndex = 11;
@@ -476,9 +492,9 @@
 			this.grpDecompileOpts.Controls.Add(this.rdoDecompileOptVerbobjs);
 			this.grpDecompileOpts.Controls.Add(this.rdoDecompileOptPages);
 			this.grpDecompileOpts.Controls.Add(this.rdoDecompileOptAll);
-			this.grpDecompileOpts.Location = new System.Drawing.Point(121, 64);
+			this.grpDecompileOpts.Location = new System.Drawing.Point(128, 64);
 			this.grpDecompileOpts.Name = "grpDecompileOpts";
-			this.grpDecompileOpts.Size = new System.Drawing.Size(185, 95);
+			this.grpDecompileOpts.Size = new System.Drawing.Size(178, 95);
 			this.grpDecompileOpts.TabIndex = 8;
 			this.grpDecompileOpts.TabStop = false;
 			this.grpDecompileOpts.Text = "Decompile Options";
@@ -486,7 +502,7 @@
 			// rdoDecompileOptVerbobjs
 			// 
 			this.rdoDecompileOptVerbobjs.AutoSize = true;
-			this.rdoDecompileOptVerbobjs.Location = new System.Drawing.Point(16, 66);
+			this.rdoDecompileOptVerbobjs.Location = new System.Drawing.Point(7, 66);
 			this.rdoDecompileOptVerbobjs.Name = "rdoDecompileOptVerbobjs";
 			this.rdoDecompileOptVerbobjs.Size = new System.Drawing.Size(166, 17);
 			this.rdoDecompileOptVerbobjs.TabIndex = 2;
@@ -496,7 +512,7 @@
 			// rdoDecompileOptPages
 			// 
 			this.rdoDecompileOptPages.AutoSize = true;
-			this.rdoDecompileOptPages.Location = new System.Drawing.Point(16, 43);
+			this.rdoDecompileOptPages.Location = new System.Drawing.Point(7, 43);
 			this.rdoDecompileOptPages.Name = "rdoDecompileOptPages";
 			this.rdoDecompileOptPages.Size = new System.Drawing.Size(135, 17);
 			this.rdoDecompileOptPages.TabIndex = 1;
@@ -507,7 +523,7 @@
 			// 
 			this.rdoDecompileOptAll.AutoSize = true;
 			this.rdoDecompileOptAll.Checked = true;
-			this.rdoDecompileOptAll.Location = new System.Drawing.Point(16, 20);
+			this.rdoDecompileOptAll.Location = new System.Drawing.Point(7, 20);
 			this.rdoDecompileOptAll.Name = "rdoDecompileOptAll";
 			this.rdoDecompileOptAll.Size = new System.Drawing.Size(89, 17);
 			this.rdoDecompileOptAll.TabIndex = 0;
@@ -569,6 +585,8 @@
 			// 
 			// tabCompile
 			// 
+			this.tabCompile.Controls.Add(this.grpCOut);
+			this.tabCompile.Controls.Add(this.grpCSource);
 			this.tabCompile.Controls.Add(this.btnRevDecompileToCompile);
 			this.tabCompile.Controls.Add(this.chkDeleteTemp);
 			this.tabCompile.Controls.Add(this.grpCompileSysVer);
@@ -583,14 +601,81 @@
 			this.tabCompile.Location = new System.Drawing.Point(4, 22);
 			this.tabCompile.Name = "tabCompile";
 			this.tabCompile.Padding = new System.Windows.Forms.Padding(3);
-			this.tabCompile.Size = new System.Drawing.Size(473, 282);
+			this.tabCompile.Size = new System.Drawing.Size(473, 297);
 			this.tabCompile.TabIndex = 1;
 			this.tabCompile.Text = "Compile";
 			this.tabCompile.UseVisualStyleBackColor = true;
 			// 
+			// grpCOut
+			// 
+			this.grpCOut.Controls.Add(this.rdoCompileOutUTF8);
+			this.grpCOut.Controls.Add(this.rdoCompileOutShiftJIS);
+			this.grpCOut.Location = new System.Drawing.Point(241, 165);
+			this.grpCOut.Name = "grpCOut";
+			this.grpCOut.Size = new System.Drawing.Size(225, 95);
+			this.grpCOut.TabIndex = 26;
+			this.grpCOut.TabStop = false;
+			this.grpCOut.Text = "Game Output Encoding";
+			// 
+			// rdoCompileOutUTF8
+			// 
+			this.rdoCompileOutUTF8.AutoSize = true;
+			this.rdoCompileOutUTF8.Location = new System.Drawing.Point(7, 43);
+			this.rdoCompileOutUTF8.Name = "rdoCompileOutUTF8";
+			this.rdoCompileOutUTF8.Size = new System.Drawing.Size(55, 17);
+			this.rdoCompileOutUTF8.TabIndex = 1;
+			this.rdoCompileOutUTF8.Text = "UTF-8";
+			this.rdoCompileOutUTF8.UseVisualStyleBackColor = true;
+			// 
+			// rdoCompileOutShiftJIS
+			// 
+			this.rdoCompileOutShiftJIS.AutoSize = true;
+			this.rdoCompileOutShiftJIS.Checked = true;
+			this.rdoCompileOutShiftJIS.Location = new System.Drawing.Point(7, 20);
+			this.rdoCompileOutShiftJIS.Name = "rdoCompileOutShiftJIS";
+			this.rdoCompileOutShiftJIS.Size = new System.Drawing.Size(64, 17);
+			this.rdoCompileOutShiftJIS.TabIndex = 0;
+			this.rdoCompileOutShiftJIS.TabStop = true;
+			this.rdoCompileOutShiftJIS.Text = "Shift-JIS";
+			this.rdoCompileOutShiftJIS.UseVisualStyleBackColor = true;
+			// 
+			// grpCSource
+			// 
+			this.grpCSource.Controls.Add(this.rdoCompileSourceUTF8);
+			this.grpCSource.Controls.Add(this.rdoCompileSourceShiftJIS);
+			this.grpCSource.Location = new System.Drawing.Point(10, 165);
+			this.grpCSource.Name = "grpCSource";
+			this.grpCSource.Size = new System.Drawing.Size(225, 95);
+			this.grpCSource.TabIndex = 25;
+			this.grpCSource.TabStop = false;
+			this.grpCSource.Text = "Text Source Encoding";
+			// 
+			// rdoCompileSourceUTF8
+			// 
+			this.rdoCompileSourceUTF8.AutoSize = true;
+			this.rdoCompileSourceUTF8.Location = new System.Drawing.Point(7, 43);
+			this.rdoCompileSourceUTF8.Name = "rdoCompileSourceUTF8";
+			this.rdoCompileSourceUTF8.Size = new System.Drawing.Size(55, 17);
+			this.rdoCompileSourceUTF8.TabIndex = 1;
+			this.rdoCompileSourceUTF8.Text = "UTF-8";
+			this.rdoCompileSourceUTF8.UseVisualStyleBackColor = true;
+			this.rdoCompileSourceUTF8.CheckedChanged += new System.EventHandler(this.rdoCompileSourceUTF8_CheckedChanged);
+			// 
+			// rdoCompileSourceShiftJIS
+			// 
+			this.rdoCompileSourceShiftJIS.AutoSize = true;
+			this.rdoCompileSourceShiftJIS.Checked = true;
+			this.rdoCompileSourceShiftJIS.Location = new System.Drawing.Point(7, 20);
+			this.rdoCompileSourceShiftJIS.Name = "rdoCompileSourceShiftJIS";
+			this.rdoCompileSourceShiftJIS.Size = new System.Drawing.Size(64, 17);
+			this.rdoCompileSourceShiftJIS.TabIndex = 0;
+			this.rdoCompileSourceShiftJIS.TabStop = true;
+			this.rdoCompileSourceShiftJIS.Text = "Shift-JIS";
+			this.rdoCompileSourceShiftJIS.UseVisualStyleBackColor = true;
+			// 
 			// btnRevDecompileToCompile
 			// 
-			this.btnRevDecompileToCompile.Location = new System.Drawing.Point(10, 165);
+			this.btnRevDecompileToCompile.Location = new System.Drawing.Point(10, 267);
 			this.btnRevDecompileToCompile.Name = "btnRevDecompileToCompile";
 			this.btnRevDecompileToCompile.Size = new System.Drawing.Size(183, 23);
 			this.btnRevDecompileToCompile.TabIndex = 24;
@@ -603,7 +688,7 @@
 			this.chkDeleteTemp.AutoSize = true;
 			this.chkDeleteTemp.Checked = true;
 			this.chkDeleteTemp.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.chkDeleteTemp.Location = new System.Drawing.Point(241, 169);
+			this.chkDeleteTemp.Location = new System.Drawing.Point(241, 271);
 			this.chkDeleteTemp.Name = "chkDeleteTemp";
 			this.chkDeleteTemp.Size = new System.Drawing.Size(134, 17);
 			this.chkDeleteTemp.TabIndex = 23;
@@ -656,7 +741,7 @@
 			// 
 			// btnBeginCompile
 			// 
-			this.btnBeginCompile.Location = new System.Drawing.Point(379, 165);
+			this.btnBeginCompile.Location = new System.Drawing.Point(379, 267);
 			this.btnBeginCompile.Name = "btnBeginCompile";
 			this.btnBeginCompile.Size = new System.Drawing.Size(86, 23);
 			this.btnBeginCompile.TabIndex = 22;
@@ -679,7 +764,7 @@
 			// rdoCompileOptVerbobjs
 			// 
 			this.rdoCompileOptVerbobjs.AutoSize = true;
-			this.rdoCompileOptVerbobjs.Location = new System.Drawing.Point(16, 66);
+			this.rdoCompileOptVerbobjs.Location = new System.Drawing.Point(7, 66);
 			this.rdoCompileOptVerbobjs.Name = "rdoCompileOptVerbobjs";
 			this.rdoCompileOptVerbobjs.Size = new System.Drawing.Size(166, 17);
 			this.rdoCompileOptVerbobjs.TabIndex = 2;
@@ -689,7 +774,7 @@
 			// rdoCompileOptPages
 			// 
 			this.rdoCompileOptPages.AutoSize = true;
-			this.rdoCompileOptPages.Location = new System.Drawing.Point(16, 43);
+			this.rdoCompileOptPages.Location = new System.Drawing.Point(7, 43);
 			this.rdoCompileOptPages.Name = "rdoCompileOptPages";
 			this.rdoCompileOptPages.Size = new System.Drawing.Size(135, 17);
 			this.rdoCompileOptPages.TabIndex = 1;
@@ -700,7 +785,7 @@
 			// 
 			this.rdoCompileOptAll.AutoSize = true;
 			this.rdoCompileOptAll.Checked = true;
-			this.rdoCompileOptAll.Location = new System.Drawing.Point(16, 20);
+			this.rdoCompileOptAll.Location = new System.Drawing.Point(7, 20);
 			this.rdoCompileOptAll.Name = "rdoCompileOptAll";
 			this.rdoCompileOptAll.Size = new System.Drawing.Size(76, 17);
 			this.rdoCompileOptAll.TabIndex = 0;
@@ -760,12 +845,45 @@
 			this.lblCompileSrcDir.TabIndex = 12;
 			this.lblCompileSrcDir.Text = "Source Directory:";
 			// 
+			// rdoDecompileOutShiftJIS
+			// 
+			this.rdoDecompileOutShiftJIS.AutoSize = true;
+			this.rdoDecompileOutShiftJIS.Checked = true;
+			this.rdoDecompileOutShiftJIS.Location = new System.Drawing.Point(7, 20);
+			this.rdoDecompileOutShiftJIS.Name = "rdoDecompileOutShiftJIS";
+			this.rdoDecompileOutShiftJIS.Size = new System.Drawing.Size(64, 17);
+			this.rdoDecompileOutShiftJIS.TabIndex = 0;
+			this.rdoDecompileOutShiftJIS.TabStop = true;
+			this.rdoDecompileOutShiftJIS.Text = "Shift-JIS";
+			this.rdoDecompileOutShiftJIS.UseVisualStyleBackColor = true;
+			// 
+			// rdoDecompileOutUTF8
+			// 
+			this.rdoDecompileOutUTF8.AutoSize = true;
+			this.rdoDecompileOutUTF8.Location = new System.Drawing.Point(7, 43);
+			this.rdoDecompileOutUTF8.Name = "rdoDecompileOutUTF8";
+			this.rdoDecompileOutUTF8.Size = new System.Drawing.Size(55, 17);
+			this.rdoDecompileOutUTF8.TabIndex = 1;
+			this.rdoDecompileOutUTF8.Text = "UTF-8";
+			this.rdoDecompileOutUTF8.UseVisualStyleBackColor = true;
+			// 
+			// grpDecompileOut
+			// 
+			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutUTF8);
+			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutShiftJIS);
+			this.grpDecompileOut.Location = new System.Drawing.Point(128, 165);
+			this.grpDecompileOut.Name = "grpDecompileOut";
+			this.grpDecompileOut.Size = new System.Drawing.Size(178, 95);
+			this.grpDecompileOut.TabIndex = 14;
+			this.grpDecompileOut.TabStop = false;
+			this.grpDecompileOut.Text = "Text Output Encoding";
+			// 
 			// DecompilerForm
 			// 
 			this.AllowDrop = true;
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(484, 347);
+			this.ClientSize = new System.Drawing.Size(484, 351);
 			this.Controls.Add(this.tabCtrlMain);
 			this.Controls.Add(this.menuStrip1);
 			this.MainMenuStrip = this.menuStrip1;
@@ -779,8 +897,8 @@
 			this.tabDecompile.PerformLayout();
 			this.grpVarFormat.ResumeLayout(false);
 			this.grpVarFormat.PerformLayout();
-			this.grpSourceEncoding.ResumeLayout(false);
-			this.grpSourceEncoding.PerformLayout();
+			this.grpDecompileSource.ResumeLayout(false);
+			this.grpDecompileSource.PerformLayout();
 			this.grpTextMode.ResumeLayout(false);
 			this.grpTextMode.PerformLayout();
 			this.grpDecompileSysVer.ResumeLayout(false);
@@ -789,10 +907,16 @@
 			this.grpDecompileOpts.PerformLayout();
 			this.tabCompile.ResumeLayout(false);
 			this.tabCompile.PerformLayout();
+			this.grpCOut.ResumeLayout(false);
+			this.grpCOut.PerformLayout();
+			this.grpCSource.ResumeLayout(false);
+			this.grpCSource.PerformLayout();
 			this.grpCompileSysVer.ResumeLayout(false);
 			this.grpCompileSysVer.PerformLayout();
 			this.grpCompileOpts.ResumeLayout(false);
 			this.grpCompileOpts.PerformLayout();
+			this.grpDecompileOut.ResumeLayout(false);
+			this.grpDecompileOut.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -854,16 +978,25 @@
 		private System.Windows.Forms.RadioButton rdoHiragana;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
 		private System.Windows.Forms.ToolStripMenuItem tlsAdvanced;
-		private System.Windows.Forms.ToolStripMenuItem tlsNoTag;
 		private System.Windows.Forms.ToolStripMenuItem tlsOutputJunk;
 		private System.Windows.Forms.ToolStripMenuItem tlsDCmd;
-		private System.Windows.Forms.GroupBox grpSourceEncoding;
-		private System.Windows.Forms.RadioButton rdoPC88;
-		private System.Windows.Forms.RadioButton rdoShiftJIS;
+		private System.Windows.Forms.GroupBox grpDecompileSource;
+		private System.Windows.Forms.RadioButton rdoDecompileSourceMSX;
+		private System.Windows.Forms.RadioButton rdoDecompileSourceShiftJIS;
 		private System.Windows.Forms.GroupBox grpVarFormat;
 		private System.Windows.Forms.RadioButton rdoVAROnly;
 		private System.Windows.Forms.RadioButton rdoFullLabel;
 		private System.Windows.Forms.ToolStripMenuItem tlsDiacritic;
+		private System.Windows.Forms.RadioButton rdoDecompileSourceUTF8;
+		private System.Windows.Forms.GroupBox grpCOut;
+		private System.Windows.Forms.RadioButton rdoCompileOutUTF8;
+		private System.Windows.Forms.RadioButton rdoCompileOutShiftJIS;
+		private System.Windows.Forms.GroupBox grpCSource;
+		private System.Windows.Forms.RadioButton rdoCompileSourceUTF8;
+		private System.Windows.Forms.RadioButton rdoCompileSourceShiftJIS;
+		private System.Windows.Forms.GroupBox grpDecompileOut;
+		private System.Windows.Forms.RadioButton rdoDecompileOutUTF8;
+		private System.Windows.Forms.RadioButton rdoDecompileOutShiftJIS;
 	}
 }
 

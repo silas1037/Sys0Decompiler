@@ -49,9 +49,9 @@
 			this.tlsAbout = new System.Windows.Forms.ToolStripMenuItem();
 			this.tabCtrlMain = new System.Windows.Forms.TabControl();
 			this.tabDecompile = new System.Windows.Forms.TabPage();
-			this.grpVarFormat = new System.Windows.Forms.GroupBox();
-			this.rdoVAROnly = new System.Windows.Forms.RadioButton();
-			this.rdoFullLabel = new System.Windows.Forms.RadioButton();
+			this.grpDecompileOut = new System.Windows.Forms.GroupBox();
+			this.rdoDecompileOutUTF8 = new System.Windows.Forms.RadioButton();
+			this.rdoDecompileOutShiftJIS = new System.Windows.Forms.RadioButton();
 			this.grpDecompileSource = new System.Windows.Forms.GroupBox();
 			this.rdoDecompileSourceUTF8 = new System.Windows.Forms.RadioButton();
 			this.rdoDecompileSourceMSX = new System.Windows.Forms.RadioButton();
@@ -100,13 +100,13 @@
 			this.btnCompileSrcDir = new System.Windows.Forms.Button();
 			this.txtCompileSrcDir = new System.Windows.Forms.TextBox();
 			this.lblCompileSrcDir = new System.Windows.Forms.Label();
-			this.rdoDecompileOutShiftJIS = new System.Windows.Forms.RadioButton();
-			this.rdoDecompileOutUTF8 = new System.Windows.Forms.RadioButton();
-			this.grpDecompileOut = new System.Windows.Forms.GroupBox();
+			this.grpVarFormat = new System.Windows.Forms.GroupBox();
+			this.rdoVAROnly = new System.Windows.Forms.RadioButton();
+			this.rdoFullLabel = new System.Windows.Forms.RadioButton();
 			this.menuStrip1.SuspendLayout();
 			this.tabCtrlMain.SuspendLayout();
 			this.tabDecompile.SuspendLayout();
-			this.grpVarFormat.SuspendLayout();
+			this.grpDecompileOut.SuspendLayout();
 			this.grpDecompileSource.SuspendLayout();
 			this.grpTextMode.SuspendLayout();
 			this.grpDecompileSysVer.SuspendLayout();
@@ -116,7 +116,7 @@
 			this.grpCSource.SuspendLayout();
 			this.grpCompileSysVer.SuspendLayout();
 			this.grpCompileOpts.SuspendLayout();
-			this.grpDecompileOut.SuspendLayout();
+			this.grpVarFormat.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// menuStrip1
@@ -274,8 +274,8 @@
 			// 
 			// tabDecompile
 			// 
-			this.tabDecompile.Controls.Add(this.grpDecompileOut);
 			this.tabDecompile.Controls.Add(this.grpVarFormat);
+			this.tabDecompile.Controls.Add(this.grpDecompileOut);
 			this.tabDecompile.Controls.Add(this.grpDecompileSource);
 			this.tabDecompile.Controls.Add(this.grpTextMode);
 			this.tabDecompile.Controls.Add(this.btnRevCompileToDecompile);
@@ -296,38 +296,38 @@
 			this.tabDecompile.Text = "Decompile";
 			this.tabDecompile.UseVisualStyleBackColor = true;
 			// 
-			// grpVarFormat
+			// grpDecompileOut
 			// 
-			this.grpVarFormat.Controls.Add(this.rdoVAROnly);
-			this.grpVarFormat.Controls.Add(this.rdoFullLabel);
-			this.grpVarFormat.Location = new System.Drawing.Point(309, 165);
-			this.grpVarFormat.Name = "grpVarFormat";
-			this.grpVarFormat.Size = new System.Drawing.Size(156, 95);
-			this.grpVarFormat.TabIndex = 14;
-			this.grpVarFormat.TabStop = false;
-			this.grpVarFormat.Text = "Variable Format";
+			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutUTF8);
+			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutShiftJIS);
+			this.grpDecompileOut.Location = new System.Drawing.Point(128, 165);
+			this.grpDecompileOut.Name = "grpDecompileOut";
+			this.grpDecompileOut.Size = new System.Drawing.Size(178, 95);
+			this.grpDecompileOut.TabIndex = 14;
+			this.grpDecompileOut.TabStop = false;
+			this.grpDecompileOut.Text = "Text Output Encoding";
 			// 
-			// rdoVAROnly
+			// rdoDecompileOutUTF8
 			// 
-			this.rdoVAROnly.AutoSize = true;
-			this.rdoVAROnly.Location = new System.Drawing.Point(9, 43);
-			this.rdoVAROnly.Name = "rdoVAROnly";
-			this.rdoVAROnly.Size = new System.Drawing.Size(115, 17);
-			this.rdoVAROnly.TabIndex = 1;
-			this.rdoVAROnly.Text = "\"VAR\" Labels Only";
-			this.rdoVAROnly.UseVisualStyleBackColor = true;
+			this.rdoDecompileOutUTF8.AutoSize = true;
+			this.rdoDecompileOutUTF8.Location = new System.Drawing.Point(7, 43);
+			this.rdoDecompileOutUTF8.Name = "rdoDecompileOutUTF8";
+			this.rdoDecompileOutUTF8.Size = new System.Drawing.Size(55, 17);
+			this.rdoDecompileOutUTF8.TabIndex = 1;
+			this.rdoDecompileOutUTF8.Text = "UTF-8";
+			this.rdoDecompileOutUTF8.UseVisualStyleBackColor = true;
 			// 
-			// rdoFullLabel
+			// rdoDecompileOutShiftJIS
 			// 
-			this.rdoFullLabel.AutoSize = true;
-			this.rdoFullLabel.Checked = true;
-			this.rdoFullLabel.Location = new System.Drawing.Point(9, 20);
-			this.rdoFullLabel.Name = "rdoFullLabel";
-			this.rdoFullLabel.Size = new System.Drawing.Size(89, 17);
-			this.rdoFullLabel.TabIndex = 0;
-			this.rdoFullLabel.TabStop = true;
-			this.rdoFullLabel.Text = "Full Label Set";
-			this.rdoFullLabel.UseVisualStyleBackColor = true;
+			this.rdoDecompileOutShiftJIS.AutoSize = true;
+			this.rdoDecompileOutShiftJIS.Checked = true;
+			this.rdoDecompileOutShiftJIS.Location = new System.Drawing.Point(7, 20);
+			this.rdoDecompileOutShiftJIS.Name = "rdoDecompileOutShiftJIS";
+			this.rdoDecompileOutShiftJIS.Size = new System.Drawing.Size(64, 17);
+			this.rdoDecompileOutShiftJIS.TabIndex = 0;
+			this.rdoDecompileOutShiftJIS.TabStop = true;
+			this.rdoDecompileOutShiftJIS.Text = "Shift-JIS";
+			this.rdoDecompileOutShiftJIS.UseVisualStyleBackColor = true;
 			// 
 			// grpDecompileSource
 			// 
@@ -361,7 +361,7 @@
 			this.rdoDecompileSourceMSX.TabIndex = 2;
 			this.rdoDecompileSourceMSX.Text = "MSX (Unstable)";
 			this.rdoDecompileSourceMSX.UseVisualStyleBackColor = true;
-			this.rdoDecompileSourceMSX.CheckedChanged += new System.EventHandler(this.rdoPC88_CheckedChanged);
+			this.rdoDecompileSourceMSX.CheckedChanged += new System.EventHandler(this.rdoMSX_CheckedChanged);
 			// 
 			// rdoDecompileSourceShiftJIS
 			// 
@@ -374,19 +374,19 @@
 			this.rdoDecompileSourceShiftJIS.TabStop = true;
 			this.rdoDecompileSourceShiftJIS.Text = "Shift-JIS";
 			this.rdoDecompileSourceShiftJIS.UseVisualStyleBackColor = true;
-			this.rdoDecompileSourceShiftJIS.CheckedChanged += new System.EventHandler(this.rdoShiftJIS_CheckedChanged);
+			this.rdoDecompileSourceShiftJIS.CheckedChanged += new System.EventHandler(this.rdoDecompileSourceShiftJIS_CheckedChanged);
 			// 
 			// grpTextMode
 			// 
 			this.grpTextMode.Controls.Add(this.rdoRaw);
 			this.grpTextMode.Controls.Add(this.rdoKatakana);
 			this.grpTextMode.Controls.Add(this.rdoHiragana);
-			this.grpTextMode.Location = new System.Drawing.Point(309, 64);
+			this.grpTextMode.Location = new System.Drawing.Point(311, 165);
 			this.grpTextMode.Name = "grpTextMode";
 			this.grpTextMode.Size = new System.Drawing.Size(156, 95);
 			this.grpTextMode.TabIndex = 9;
 			this.grpTextMode.TabStop = false;
-			this.grpTextMode.Text = "Text Output";
+			this.grpTextMode.Text = "Shift-JIS Source Conversion";
 			// 
 			// rdoRaw
 			// 
@@ -845,38 +845,38 @@
 			this.lblCompileSrcDir.TabIndex = 12;
 			this.lblCompileSrcDir.Text = "Source Directory:";
 			// 
-			// rdoDecompileOutShiftJIS
+			// grpVarFormat
 			// 
-			this.rdoDecompileOutShiftJIS.AutoSize = true;
-			this.rdoDecompileOutShiftJIS.Checked = true;
-			this.rdoDecompileOutShiftJIS.Location = new System.Drawing.Point(7, 20);
-			this.rdoDecompileOutShiftJIS.Name = "rdoDecompileOutShiftJIS";
-			this.rdoDecompileOutShiftJIS.Size = new System.Drawing.Size(64, 17);
-			this.rdoDecompileOutShiftJIS.TabIndex = 0;
-			this.rdoDecompileOutShiftJIS.TabStop = true;
-			this.rdoDecompileOutShiftJIS.Text = "Shift-JIS";
-			this.rdoDecompileOutShiftJIS.UseVisualStyleBackColor = true;
+			this.grpVarFormat.Controls.Add(this.rdoVAROnly);
+			this.grpVarFormat.Controls.Add(this.rdoFullLabel);
+			this.grpVarFormat.Location = new System.Drawing.Point(311, 64);
+			this.grpVarFormat.Name = "grpVarFormat";
+			this.grpVarFormat.Size = new System.Drawing.Size(156, 95);
+			this.grpVarFormat.TabIndex = 15;
+			this.grpVarFormat.TabStop = false;
+			this.grpVarFormat.Text = "Variable Format";
 			// 
-			// rdoDecompileOutUTF8
+			// rdoVAROnly
 			// 
-			this.rdoDecompileOutUTF8.AutoSize = true;
-			this.rdoDecompileOutUTF8.Location = new System.Drawing.Point(7, 43);
-			this.rdoDecompileOutUTF8.Name = "rdoDecompileOutUTF8";
-			this.rdoDecompileOutUTF8.Size = new System.Drawing.Size(55, 17);
-			this.rdoDecompileOutUTF8.TabIndex = 1;
-			this.rdoDecompileOutUTF8.Text = "UTF-8";
-			this.rdoDecompileOutUTF8.UseVisualStyleBackColor = true;
+			this.rdoVAROnly.AutoSize = true;
+			this.rdoVAROnly.Location = new System.Drawing.Point(9, 43);
+			this.rdoVAROnly.Name = "rdoVAROnly";
+			this.rdoVAROnly.Size = new System.Drawing.Size(115, 17);
+			this.rdoVAROnly.TabIndex = 1;
+			this.rdoVAROnly.Text = "\"VAR\" Labels Only";
+			this.rdoVAROnly.UseVisualStyleBackColor = true;
 			// 
-			// grpDecompileOut
+			// rdoFullLabel
 			// 
-			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutUTF8);
-			this.grpDecompileOut.Controls.Add(this.rdoDecompileOutShiftJIS);
-			this.grpDecompileOut.Location = new System.Drawing.Point(128, 165);
-			this.grpDecompileOut.Name = "grpDecompileOut";
-			this.grpDecompileOut.Size = new System.Drawing.Size(178, 95);
-			this.grpDecompileOut.TabIndex = 14;
-			this.grpDecompileOut.TabStop = false;
-			this.grpDecompileOut.Text = "Text Output Encoding";
+			this.rdoFullLabel.AutoSize = true;
+			this.rdoFullLabel.Checked = true;
+			this.rdoFullLabel.Location = new System.Drawing.Point(9, 20);
+			this.rdoFullLabel.Name = "rdoFullLabel";
+			this.rdoFullLabel.Size = new System.Drawing.Size(89, 17);
+			this.rdoFullLabel.TabIndex = 0;
+			this.rdoFullLabel.TabStop = true;
+			this.rdoFullLabel.Text = "Full Label Set";
+			this.rdoFullLabel.UseVisualStyleBackColor = true;
 			// 
 			// DecompilerForm
 			// 
@@ -895,8 +895,8 @@
 			this.tabCtrlMain.ResumeLayout(false);
 			this.tabDecompile.ResumeLayout(false);
 			this.tabDecompile.PerformLayout();
-			this.grpVarFormat.ResumeLayout(false);
-			this.grpVarFormat.PerformLayout();
+			this.grpDecompileOut.ResumeLayout(false);
+			this.grpDecompileOut.PerformLayout();
 			this.grpDecompileSource.ResumeLayout(false);
 			this.grpDecompileSource.PerformLayout();
 			this.grpTextMode.ResumeLayout(false);
@@ -915,8 +915,8 @@
 			this.grpCompileSysVer.PerformLayout();
 			this.grpCompileOpts.ResumeLayout(false);
 			this.grpCompileOpts.PerformLayout();
-			this.grpDecompileOut.ResumeLayout(false);
-			this.grpDecompileOut.PerformLayout();
+			this.grpVarFormat.ResumeLayout(false);
+			this.grpVarFormat.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -983,9 +983,6 @@
 		private System.Windows.Forms.GroupBox grpDecompileSource;
 		private System.Windows.Forms.RadioButton rdoDecompileSourceMSX;
 		private System.Windows.Forms.RadioButton rdoDecompileSourceShiftJIS;
-		private System.Windows.Forms.GroupBox grpVarFormat;
-		private System.Windows.Forms.RadioButton rdoVAROnly;
-		private System.Windows.Forms.RadioButton rdoFullLabel;
 		private System.Windows.Forms.ToolStripMenuItem tlsDiacritic;
 		private System.Windows.Forms.RadioButton rdoDecompileSourceUTF8;
 		private System.Windows.Forms.GroupBox grpCOut;
@@ -997,6 +994,9 @@
 		private System.Windows.Forms.GroupBox grpDecompileOut;
 		private System.Windows.Forms.RadioButton rdoDecompileOutUTF8;
 		private System.Windows.Forms.RadioButton rdoDecompileOutShiftJIS;
+		private System.Windows.Forms.GroupBox grpVarFormat;
+		private System.Windows.Forms.RadioButton rdoVAROnly;
+		private System.Windows.Forms.RadioButton rdoFullLabel;
 	}
 }
 

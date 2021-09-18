@@ -138,6 +138,7 @@
     <Compile Include="DecompilerForm.Designer.cs">
       <DependentUpon>DecompilerForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="SourceEncodingMode.cs" />
     <Compile Include="ErrorListForm.cs">
       <SubType>Form</SubType>
     </Compile>

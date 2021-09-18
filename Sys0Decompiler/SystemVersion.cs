@@ -12,6 +12,10 @@ namespace Sys0Decompiler
 	abstract class SystemVersion
 	{
 		public static int STRING_MAX = 65535;
+		public static int PAGE_MAX = 65535;
+		public const int MSG_MAX = 200;
+		public const int GAIJI_FIRST = 0xE000;
+		public const int GAIJI_LAST = 0xE0BB;
 
 		public enum DecompileModeType
 		{
@@ -41,7 +45,6 @@ namespace Sys0Decompiler
 		protected int curColumn;
 		protected bool deprecated_newStyleTag = false;
 		protected bool foundFirstMenu;
-		//protected UInt16 curAddress;
 
 		protected DecompileModeType decompileMode;
 		protected int firstEOF;
@@ -55,9 +58,12 @@ namespace Sys0Decompiler
 		private int dataSector;
 		protected int curPage;
 		protected int curDisk;
-		protected char activeTextOutput = ' ';
+		protected bool activeMSXMessage = false;
 		protected int nestingLevel = 0;
+		protected int curLabelAddress;
 		protected List<int> labelAddresses;
+		protected Stack<long> branchStarts;
+		protected int curBranchEndAddress;
 		protected List<int> branchEndAddresses;
 		protected bool activeSetMenu;
 		protected bool fatalError;
@@ -92,7 +98,6 @@ namespace Sys0Decompiler
 		}
 		protected Dictionary<string, LabelInfo> labelMap;
 
-		protected Stack<long> branchStarts;
 
 		protected char[] operands;
 		protected char[] varStarts;
@@ -440,7 +445,7 @@ namespace Sys0Decompiler
 			outputStream.Position = curPosition;
 		}
 
-		// Similar to the label functions above, we must also prep and later clarify branch ends in Sys2 and 3.
+		// Similar to the label functions above, we must also prep and later clarify branch ends in Sys3.
 		// Because branches only have one start and one end, and always occur in that order, these functions
 		// are less numerous and all-around smaller.
 		//
@@ -452,7 +457,7 @@ namespace Sys0Decompiler
 			if(branchStarts.Count < UInt16.MaxValue)
 			{
 				branchStarts.Push(outputStream.Position);
-				return 0; // filler
+				return 0; // filler, overwritten in DefineBranchEnd()
 			}
 			else
 			{
@@ -547,7 +552,7 @@ namespace Sys0Decompiler
 							// Temporary code end.
 							else
 							{
-								RaiseError("U+#### outside the gaiji range.");
+								RaiseError("G+#### outside the gaiji range.");
 							}
 
 							// Encode it as a UTF-8 character U+E000+index.
@@ -593,28 +598,25 @@ namespace Sys0Decompiler
 			{
 				RaiseError("Message does not end with close quotes.");
 			}
-
-			//SkipClosingMark(delimeter);
 		}
 
 		public void WriteByte(byte b)
 		{
 			outputStream.WriteByte(b);
-			//curAddress++;
 		}
 
 		public void WriteByte(int i)
 		{
 			outputStream.WriteByte(Convert.ToByte(i));
-			//curAddress++;
 		}
 
 		public void WriteByte(char c)
 		{
 			outputStream.WriteByte(Convert.ToByte(c));
-			//curAddress++;
 		}
 
+		// Write a character in ShiftJIS encoding. This is used exclusively by MSX -> Shift-JIS decompilation and
+		// may be removed in the future.
 		public void WriteShiftJISChar(string c)
 		{
 			byte[] bytes = Encoding.GetEncoding("shift_jis").GetBytes(c);
@@ -628,19 +630,12 @@ namespace Sys0Decompiler
 		{
 			WriteByte(w & 0xff);
 			WriteByte(w >> 8);
-			//curAddress += 2;
-
-			/*compile_data.push_back(data & 0xff);
-			compile_data.push_back(data >> 8);
-			compile_addr += 2;*/
 		}
 
 		protected void WriteText(string value)
 		{
 			byte[] info = new UTF8Encoding(true).GetBytes(value);
-			//List<byte> info2 = info.ToList();
 			outputStream.Write(info, 0, info.Length);
-			//curAddress += Convert.ToUInt16(info.Length);
 		}
 
 		// The address of the first menu call ([) in a file is written to index 0.
@@ -667,9 +662,16 @@ namespace Sys0Decompiler
 
 		private static readonly Regex sWhitespace = new Regex(@"\s+");
 
+		public void StartCompile()
+		{
+			curPage = -1;
+		}
+
 		public bool CompilePage(string inputFile, string outputFile)
 		{
 			char cmd;
+
+			curPage++;
 			activeSetMenu = false;
 
 			SetOutputFile(outputFile);
@@ -877,8 +879,8 @@ namespace Sys0Decompiler
 						WriteMessage('\'');
 						break;
 					case '\0':
-						RaiseError("Null character in place of command. Null characters in this possition may " +
-							"be innocent or or may sign of further errors. They must be manually investigated " +
+						RaiseError("Null character in place of command. Null characters in this position may " +
+							"be innocent or or may sign of further errors. They should be manually investigated " +
 							"and then deleted.");
 						break;
 					case ';':
@@ -893,6 +895,14 @@ namespace Sys0Decompiler
 			// End of file (EOF).
 			long EOFaddr = outputStream.Position;
 			WriteByte(0x1A);
+
+			if(outputStream.Length > PAGE_MAX)
+			{
+				RaiseError("Page " + curPage + " is too long in the current encoding. Page size is " +
+					outputStream.Length + ", max size is " + PAGE_MAX + ".");
+				outputStream.Close();
+				return false; 
+			}
 
 			// If WriteFirstMenu has never been called, fill the first two bytes with the location of the 
 			// EOF character.
@@ -1448,6 +1458,54 @@ namespace Sys0Decompiler
 				decompileInput.Close();
 		}
 
+		public void DecompileAG00(string directoryName, string codeDirectoryName)
+		{
+			string ag00 = Path.Combine(directoryName, DecompilerForm.FILE_AG00);
+			if(!File.Exists(ag00))
+				return;
+
+			if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX)
+			{
+				DecompileMSXAG00(ag00, codeDirectoryName);
+				return;
+			}
+
+			string[] lines = File.ReadAllLines(ag00);
+			string[] directory = lines[0].Split(',');
+			int totalVerbs = Int32.Parse(directory[1]);
+			int totalObjects = Int32.Parse(directory[2]);
+
+			string verbFile = Path.Combine(codeDirectoryName, DecompilerForm.FILE_VERBS);
+			string objectFile = Path.Combine(codeDirectoryName, DecompilerForm.FILE_OBJECTS);
+			SetOutputFile(verbFile);
+			int lineCount = 0;
+
+			char[] nullChars = { '\0' };
+
+			foreach(string line in lines)
+			{
+				// AG00 is sometimes padded with null characters, especially at the end. Remove them.
+				string trimmedLine = line.Trim(nullChars);
+				if(trimmedLine.Length == 0) continue;
+
+				byte[] lineBytes = parent.DecompileSourceEncoding.GetBytes(trimmedLine);
+
+				outputStream.Write(Encoding.Convert(parent.DecompileSourceEncoding, parent.DecompileOutputEncoding,
+					lineBytes), 0, lineBytes.Length);
+
+				if(lineCount > -1)
+				{
+					lineCount++;
+
+					if(lineCount >= totalVerbs)
+					{
+						SetOutputFile(objectFile);
+						lineCount = -1;
+					}
+				}
+			}
+		}
+
 		protected byte DGetByte()
 		{
 			if(scenarioAddress > scenarioSize - 1)
@@ -1511,6 +1569,7 @@ namespace Sys0Decompiler
 			}
 			return Convert.ToChar(scenarioData[scenarioAddress]);
 		}
+
 		protected UInt16 DPeekWord()
 		{
 			if(scenarioAddress + 1 >= scenarioData.Length)
@@ -1521,103 +1580,195 @@ namespace Sys0Decompiler
 			return Convert.ToUInt16(scenarioData[scenarioAddress] | scenarioData[scenarioAddress + 1] << 8);
 		}
 
-		protected void DWriteNewStyleMessage(char delimeter, bool overrideNewline = false)
+		protected bool IsActiveBranchEnds()
 		{
-			bool escapeNext = false;
-			char nextChar;
+			return decompileMode == DecompileModeType.ProcessCode && curBranchEndAddress >= 0
+				&& branchEndAddresses.Count > curBranchEndAddress;
+		}
+
+		protected bool IsActiveLabels()
+		{
+			return decompileMode == DecompileModeType.ProcessCode && curLabelAddress >= 0 
+				&& labelAddresses.Count > curLabelAddress;
+		}
+
+		protected void DGetAndWriteMessage(byte terminator)
+		{
+			List<byte> byteStream = new List<byte>();
+
+			if(decompileMode == DecompileModeType.ProcessCode)
+			{
+				WriteByte('\'');
+			}
 
 			while(true)
 			{
-				nextChar = DGetChar();
+				// A terminator of ' ' indicates that we are looking at an old-style message with no explicit
+				// terminator. Instead, we have to check if the next character (without loading it) is either
+				// a space or a valid message character, as indicated by c & 0x80.
+				byte c = scenarioData[scenarioAddress];
+				byte c2, c3 = 0;
+				if(terminator == 0 && (c != ' ' && (c & 0x80) == 0)) break;
 
-				if(!escapeNext && nextChar == delimeter)
+				c = DGetByte();
+
+				if(terminator != 0 && c == terminator) break;
+
+				if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.ShiftJIS)
 				{
-					break;
-				}
-				else if(decompileMode == DecompileModeType.SuddenEOF)
-				{
-					break;
-				}
+					int code = (int)c;
 
-				ProcessMessageChar(nextChar, overrideNewline);
-
-				if(escapeNext)
-				{
-					// Preserving this line in case we use this function as a copy-paste for processing.
-					// if(curLine[i] == '\\' || curLine[i] == '\'' || curLine[i] == '"')
-					escapeNext = false;
-				}
-				else if(nextChar == '\\') { 
-					escapeNext = true;
-				}
-			}
-		}
-
-		protected void DGetAndWriteTextParam(char delimeter)
-		{
-			if(decompileMode == DecompileModeType.SuddenEOF) return;
-
-			byte d = DGetByte();
-
-			if(d == '\'' || d == '"')
-			{  // SysEng
-				char c;
-				while((c = DGetChar()) != delimeter && decompileMode != DecompileModeType.SuddenEOF)
-				{
-					if(c == '\\')
-						c = DGetChar();
-					ProcessMessageChar(c, true);
-				}
-			}
-			else
-			{
-				// Old-style text params do not necessarily use quotes. For example, M commands are in the format 
-				// "M [newString]:" with the colon character demarking the end of the string. As a consequence,
-				// the string cannot include a colon.
-				//
-				// Another unusual thing about text params in old style is that they don't run through the same
-				// checks as message params (ProcessMessageChar()), and so CAN include Latin characters (such as for 
-				// use with data file changes) and CAN'T include Gaiji. The only processing involved is whether or
-				// not the the character is two-byte.
-				while(d != delimeter)
-				{
-					if(DecompileMode == DecompileModeType.ProcessCode)
+					if((0x81 <= c && c <= 0x9f) || 0xe0 <= c)
 					{
-						if((0x81 <= d && d <= 0x9f) || 0xe0 <= d)
+						c2 = DGetByte();
+
+						code = (int)(c << 8 | c2);
+					}
+
+					// Convert non-ASCII characters via text mode.
+					if(c > 0x80)
+					{
+						code = ConvertToSJISTextMode((char)code);
+					}
+
+					// Two-byte code
+					if(code > 0xff) {
+						c = (byte)(code >> 8);
+						c2 = (byte)(code & 0xff);
+
+						// Gaiji. Gaiji is stored in different ranges depending on encoding. In Shift-JIS, they
+						// occupy the following ranges.
+						if((0xeb9f <= code && code <= 0xebfc) || 
+							(0xec40 <= code && code <= 0xec9e))
 						{
-							// 2bytes
-							WriteByte(d);
-							WriteByte(DGetByte());
+							byteStream.AddRange(Encoding.ASCII.GetBytes("G+" + code.ToString("X4")));
 						}
 						else
 						{
-							WriteByte(d);
+							byteStream.Add(c);
+							byteStream.Add(c2);
 						}
 					}
-
-					d = DGetByte();
+					// Single-byte code
+					else
+					{
+						// Single byte character
+						byteStream.Add((byte)code);
+					}
 				}
+
+				else if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.UTF8)
+				{
+					if(c == 0)
+					{
+						// Error.
+						byteStream.Add((byte)'?');
+					}
+					if(c <= 0x7f)
+					{
+						byteStream.Add(c);
+					}
+					else if(c <= 0xbf)
+					{
+						// Invalid UTF-8 sequence
+						byteStream.Add((byte)'?');
+					}
+					else if(c <= 0xdf)
+					{
+						byteStream.Add(c);
+						byteStream.Add(DGetByte());
+					}
+					// Gaiji. Gaiji is stored in different ranges depending on encoding. In Shift-JIS, they
+					// occupy the following ranges.
+					else if(c == 0xee)
+					{
+						c2 = DGetByte();
+						c3 = DGetByte();
+
+						int baseCode = (c & 0xf) << 12 | (c2 & 0x3f) << 6 | (c3 & 0x3f);
+						int index = baseCode - GAIJI_FIRST;
+						int finalCode = 0;
+
+						if(index < 94) finalCode = index + 0xeb9f;
+						else finalCode = index + 0xec40 - 94;
+
+						byteStream.AddRange(Encoding.ASCII.GetBytes("G+" + finalCode.ToString("X4")));
+					}
+					else if(c <= 0xef)
+					{
+						byteStream.Add(c);
+						byteStream.Add(DGetByte());
+						byteStream.Add(DGetByte());
+					}
+					else if(c <= 0xf7)
+					{
+						byteStream.Add(c);
+						byteStream.Add(DGetByte());
+						byteStream.Add(DGetByte());
+						byteStream.Add(DGetByte());
+					}
+					else
+					{
+						byteStream.Add(0xff);   // REPLACEMENT CHARACTER
+						byteStream.Add(0xfd);
+
+						// Skip a bunch
+						do
+						{
+							c = DGetByte();
+						} while(0x80 <= c && c <= 0xbf);
+					}
+				}
+
+				// Old-style messages can be interrupted by label targets and by automatic branch ends. For
+				// efficiency's sake, we'll check these only at the end of the loop, after the scenario address
+				// has progressed.
+				if(terminator == 0) {
+					if(IsActiveBranchEnds())
+					{
+						if(scenarioAddress >= branchEndAddresses[curBranchEndAddress])
+							break;
+					}
+					else if(IsActiveLabels())
+					{
+						if(scenarioAddress >= labelAddresses[curLabelAddress])
+							break;
+					}
+				}
+			}
+
+			// Debug 
+			/* byte[] restmp = Encoding.Convert(parent.DecompileSourceEncoding, parent.DecompileOutputEncoding,
+				byteStream.ToArray());
+			string resString = parent.DecompileOutputEncoding.GetString(restmp);*/
+
+			if(decompileMode == DecompileModeType.ProcessCode)
+			{
+				byte[] res = Encoding.Convert(parent.DecompileSourceEncoding, parent.DecompileOutputEncoding,
+					byteStream.ToArray());
+				foreach(byte b in res) WriteByte(b);
+				WriteByte('\'');
 			}
 		}
 
-		public int CharToTextMode(char c)
+		public int ConvertToSJISTextMode(char c)
 		{
-			return CharToTextMode(Convert.ToInt32(c));
+			return ConvertToSJISTextMode(Convert.ToInt32(c));
 		}
 
-		public int CharToTextMode(byte c)
+		public int ConvertToSJISTextMode(byte c)
 		{
-			return CharToTextMode(c);
+			return ConvertToSJISTextMode(c);
 		}
 
-		public int CharToTextMode(int code)
+		public int ConvertToSJISTextMode(int code)
 		{
-			if(parent.CurTextMode == DecompilerForm.TextMode.Raw) return Convert.ToChar(code);
+			if(parent.CurJPNTextMode == DecompilerForm.SJISTextMode.Raw) return Convert.ToChar(code);
 
 			int res;
 
 			// If we've gotten this far, we've already discounted rdoRaw, so it can only be hankaku or zankaku.
-			if(parent.CurTextMode == DecompilerForm.TextMode.Katakana)
+			if(parent.CurJPNTextMode == DecompilerForm.SJISTextMode.Katakana)
 			{
 				switch(code)
 				{
@@ -1951,138 +2102,6 @@ namespace Sys0Decompiler
 			return res;
 		}
 
-		public bool ProcessMessageChar(char c, bool overrideNewline=false)
-		{
-			if(decompileMode == DecompileModeType.SuddenEOF) return false;
-
-			// Shift JIS handling.
-			if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.ShiftJIS)
-			{
-				// Valid single-byte character.
-				if(c <= 0x80 || (0xa1 <= c && c <= 0xdd))
-				{
-					if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
-					{
-						StartTextLine();
-					}
-
-					if(decompileMode == DecompileModeType.ProcessCode || decompileMode == DecompileModeType.AG00)
-					{
-						// If we are dealing with ShiftJIS characters outside of the ASCII character space,
-						// convert them to the current text mode.
-						int code;
-
-						// Leave ASCII text as ASCII text.
-						if(c <= 0x80)
-						{
-							code = Convert.ToInt32(c);
-						}
-						// Convert the rest of it depending on whether we're in zenkaku or hankaku mode.
-						else
-						{
-							code = CharToTextMode(c);
-						}
-						if(code > 255)
-						{
-							WriteByte(code >> 8);
-							WriteByte(code & 0xff);
-						}
-						else
-						{
-							WriteByte(code);
-						}
-					}
-				}
-				// Valid two-byte character.
-				else if((0x81 <= c && c <= 0x9f) || 0xe0 <= c)
-				{
-					if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
-					{
-						StartTextLine();
-					}
-
-					// message (2 bytes)
-					if(decompileMode == DecompileModeType.ProcessCode || decompileMode == DecompileModeType.AG00)
-					{
-						//char twoByte = shiftJIS.GetChars(new byte [] { Convert.ToByte(c), DGetByte() })[0];
-						int twoByte;
-
-						if(decompileMode == DecompileModeType.ProcessCode) twoByte = (c << 8) + DGetByte();
-						else
-						{
-							twoByte = (c << 8) + parent.FileBytes[parent.FileIndex++];
-						}
-
-						int code = CharToTextMode(twoByte);
-
-						// Gaiji. Gaiji are externally defined characters (defined in GAIJI.DAT) that no longer exist 
-						// as a part of the Shift-JIS standard. We have to output their codes differently or else text 
-						// editors will replace them with "best guesses." For this reason, we'll output the number as
-						// "G+####" instead of the individual bytes.
-						// 
-						// We used to use 0x instead of G+. The compiler still recognizes the old form but the
-						// decompiler will no longer produce it.
-						if((0xeb9f <= code && code <= 0xebfc) || (0xec40 <= code && code <= 0xec9e))
-						{
-							WriteText("G+" + code.ToString("X4"));
-						}
-
-						// Regular two-byte characters. Just output them as-is.
-						else
-						{
-							if(code > 255)
-							{
-								WriteByte(code >> 8);
-								WriteByte(code & 0xff);
-							}
-							else
-							{
-								WriteByte(code);
-							}
-						}
-						//byte[] bytes = shiftJIS.GetBytes(new char[] { parent.CharToTextMode(twoByte) } );
-						//foreach(byte b in bytes) WriteByte(b);
-					}
-					else
-					{
-						scenarioAddress++;
-					}
-				}
-				else
-				{
-					if(decompileMode == DecompileModeType.AG00)
-					{
-						WriteByte(c);
-					}
-					else
-					{
-						RaiseError("Unknown text output: \"" + c + "\" at page " + curPage + " addr " +
-							scenarioAddress + "." + Environment.NewLine);
-						return false;
-					}
-				}
-			}
-			else if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.UTF8)
-			{
-				// TODO
-			}
-			else if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.MSX)
-			{
-				// All MSX/PC88 characters are single-byte, which simplifies things immensely.
-				if(activeTextOutput == ' ' && decompileMode != DecompileModeType.AG00 && !overrideNewline)
-				{
-					StartTextLine();
-				}
-
-				if(decompileMode == DecompileModeType.AG00 || decompileMode == DecompileModeType.ProcessCode)
-				{
-					return processMSXEncoding(c, overrideNewline);
-				}
-				
-			}
-			return true;
-		}
-
 		public bool IsKana (char c)
 		{
 			if(c == 0x27 || c == 0x20 || (0xa1 <= c && c <= 0xdd) || (0x81 <= c && c <= 0x9f) || 0xe0 <= c) { 
@@ -2234,7 +2253,7 @@ namespace Sys0Decompiler
 			labelAddresses.Sort();
 			labelAddresses = labelAddresses.Distinct().ToList();
 
-			// The same for branch ends. Do NOT do distinct, as it is possible for multiple branch ends to
+			// The same for branch ends. Do NOT use Distinct(), as it is possible for multiple branch ends to
 			// be at the same address, representing multiple end points in a row.
 			branchEndAddresses.Sort();
 			branchEndAddresses = branchEndAddresses.ToList();
@@ -2326,13 +2345,13 @@ namespace Sys0Decompiler
 		public bool DecompileLoop(int curPage) {
 			bool endOfFile = false;
 			string msxEOFBuffer = "";
-			int curLabelAddress = 0;
-			int curBranchEndAddress = 0;
 
 			junkCodeMode = false;
 			activeSetMenu = false;
-			activeTextOutput = ' ';
+			activeMSXMessage = false;
 			nestingLevel = 0;
+			curBranchEndAddress = 0;
+			curLabelAddress = 0;
 			lastMSXKana = ' ';
 
 			//Stopwatch sw = new Stopwatch();
@@ -2362,8 +2381,8 @@ namespace Sys0Decompiler
 				//sw.Start();
 
 				// Output branch ends. There should not be any labels and branch ends at the same address.
-				// This process is exclusive to System 2 and 3.
-				if(decompileMode == DecompileModeType.ProcessCode && curBranchEndAddress >= 0 && branchEndAddresses.Count > curBranchEndAddress)
+				// This process is exclusive to System 3.
+				if(IsActiveBranchEnds())
 				{
 					// Unlike labels, multiple end points can be at the same address, representing two+ closed
 					// blocks at once. So we use a loop instead of an if.
@@ -2381,7 +2400,7 @@ namespace Sys0Decompiler
 				}
 
 				// Output labels.
-				if(decompileMode == DecompileModeType.ProcessCode && curLabelAddress >= 0 && labelAddresses.Count > curLabelAddress)
+				if(IsActiveLabels())
 				{
 					if(scenarioAddress >= labelAddresses[curLabelAddress])
 					{
@@ -2411,7 +2430,7 @@ namespace Sys0Decompiler
 					{
 						foreach(char c in msxEOFBuffer)
 						{
-							ProcessMessageChar(c);
+							ProcessMSXChar(c);
 						}
 
 						msxEOFBuffer = "";
@@ -2530,10 +2549,16 @@ namespace Sys0Decompiler
 					break;
 				case '\'':
 				case '"':
-					DWriteNewStyleMessage(cmd);
+					if(decompileMode == DecompileModeType.ProcessCode)
+						StartLine();
+
+					DGetAndWriteMessage((byte)cmd);
+
+					if(decompileMode == DecompileModeType.ProcessCode)
+						WriteText(Environment.NewLine);
 					break;
 				default:
-					// Sometimes, you find "bubbles" of null characters in the gaps between functions due, I 
+					// Sometimes, you find "bubbles" of null characters in the gaps between functions, due, I 
 					// presume, to mis-assigned label jumps. So you might have valid code ending with a label 
 					// jump, then a bubble, then the arriving side of another label jump. To keep everything 
 					// properly aligned, we'll repeat null characters exactly as they appear, advising they be 
@@ -2556,7 +2581,7 @@ namespace Sys0Decompiler
 								}
 								else
 								{
-									bool res = ProcessMessageChar(cmd);
+									bool res = ProcessMSXChar(cmd);
 									if(!res)
 										return false;
 								}
@@ -2601,10 +2626,24 @@ namespace Sys0Decompiler
 
 					else
 					{
-						// Old-style message, or error.
-						bool res = ProcessMessageChar(cmd);
-						if(!res)
-							return false;
+						if(parent.CurDecompileSourceMode != DecompilerForm.SourceEncodingMode.MSX)
+						{
+							// Old-style message, or error.
+							if(decompileMode == DecompileModeType.ProcessCode)
+								StartLine();
+
+							scenarioAddress--;
+							DGetAndWriteMessage(0);
+
+							if(decompileMode == DecompileModeType.ProcessCode)
+								WriteText(Environment.NewLine);
+						}
+						else
+						{
+							bool res = ProcessMSXChar(cmd);
+							if(!res)
+								return false;
+						}
 					}
 
 					break;
@@ -2621,9 +2660,9 @@ namespace Sys0Decompiler
 		protected void StartLine()
 		{
 			// End text output, if applicable.
-			if(activeTextOutput != ' ')
+			if(activeMSXMessage)
 			{
-				activeTextOutput = ' ';
+				activeMSXMessage = false;
 				lastMSXKana = ' ';
 
 				if(decompileMode == DecompileModeType.ProcessCode)
@@ -2633,16 +2672,6 @@ namespace Sys0Decompiler
 			// Insert nesting.
 			if(decompileMode == DecompileModeType.ProcessCode)
 				WriteText(new string(' ', nestingLevel * 4));
-		}
-
-		protected void StartTextLine()
-		{
-			activeTextOutput = '"';
-
-			if(decompileMode == DecompileModeType.ProcessCode)
-			{
-				WriteText(new string(' ', nestingLevel * 4) + "'");
-			}
 		}
 
 		protected string varIndexToName(int index)
@@ -2738,8 +2767,6 @@ namespace Sys0Decompiler
 
 		protected void RaiseError(string errorMessage, Exception ex, bool isWarning = false)
 		{
-			//errorMessage += "()";
-
 			string exMessage = ex.Message;
 			string defaultExceptionText = ((Exception)Activator.CreateInstance(ex.GetType())).Message;
 
@@ -2810,285 +2837,355 @@ namespace Sys0Decompiler
 			}
 		}
 
-
-
-		private bool processMSXEncoding(char c, bool overrideNewline)
+		public void DecompileMSXAG00(string ag00, string codeDirectoryName)
 		{
-			int charVal = Convert.ToInt32(c);
+			scenarioData = File.ReadAllBytes(ag00);
+			string directoryLine = "";
 
-			switch(charVal)
+			// Extract the first line, which contains directory information.
+			scenarioAddress = 0;
+			while(scenarioData[scenarioAddress] != '\r')
 			{
-				case 0x00: MSXWriteNonKana(' '); break;
-				case 0x01: MSXWriteNonKana('!'); break;
-				case 0x02: MSXWriteNonKana('@'); break; // should be impossible outside of AG00, since it's a command
-				case 0x03: MSXWriteNonKana('#'); break;
-				case 0x04: MSXWriteNonKana('$'); break;
-				case 0x05: MSXWriteNonKana('%'); break;
-				case 0x06: MSXWriteNonKana('&'); break;
-				case 0x07: MSXWriteNonKana('\''); break; // impossible outside of AG00
-				case 0x08: MSXWriteNonKana('('); break;
-				case 0x09: MSXWriteNonKana(')'); break;
-				case 0x0A: MSXWriteNonKana('*'); break;
-				case 0x0B: MSXWriteNonKana('+'); break;
-				case 0x0C: MSXWriteNonKana(','); break;
-				case 0x0D: MSXWriteNonKana('-'); break;
-				case 0x0E: MSXWriteNonKana('.'); break;
-				case 0x0F: MSXWriteNonKana('/'); break; // impossible outside of AG00
-				case 0x10: MSXWriteNonKana('0'); break;
-				case 0x11: MSXWriteNonKana('1'); break;
-				case 0x12: MSXWriteNonKana('2'); break;
-				case 0x13: MSXWriteNonKana('3'); break;
-				case 0x14: MSXWriteNonKana('4'); break;
-				case 0x15: MSXWriteNonKana('5'); break;
-				case 0x16: MSXWriteNonKana('6'); break;
-				case 0x17: MSXWriteNonKana('7'); break;
-				case 0x18: MSXWriteNonKana('8'); break;
-				case 0x19: MSXWriteNonKana('9'); break;
-				case 0x1A: MSXWriteNonKana('['); break;
-				case 0x1B: MSXWriteNonKana(']'); break;
-				case 0x1C: MSXWriteNonKana('<'); break;
-				case 0x1D: MSXWriteNonKana('='); break;
-				case 0x1E: MSXWriteNonKana('>'); break;
-				case 0x1F: MSXWriteNonKana('?'); break;
-				// 0x20 invalid
-				// 0x21 through 5f are mostly impossible outside of AG00 due to being ASCII characters/commands. The
-				// symbols are guesswork, since most of them are identical to the above.
-				case 0x21: MSXWriteNonKana('!'); break;
-				case 0x22: MSXWriteNonKana('"'); break; 
-				case 0x23: MSXWriteNonKana('#'); break;
-				case 0x24: MSXWriteNonKana('$'); break;
-				case 0x25: MSXWriteNonKana('%'); break;
-				case 0x26: MSXWriteNonKana('&'); break;
-				case 0x27: MSXWriteNonKana('\''); break;
-				case 0x28: MSXWriteNonKana('('); break;
-				case 0x29: MSXWriteNonKana(')'); break;
-				case 0x2A: MSXWriteNonKana('*'); break;
-				case 0x2B: MSXWriteNonKana('+'); break;
-				case 0x2C: MSXWriteNonKana(','); break;
-				case 0x2D: MSXWriteNonKana('-'); break;
-				case 0x2E: MSXWriteNonKana('.'); break;
-				case 0x2F: MSXWriteNonKana('/'); break;
-				case 0x30: MSXWriteNonKana('0'); break;
-				case 0x31: MSXWriteNonKana('1'); break;
-				case 0x32: MSXWriteNonKana('2'); break;
-				case 0x33: MSXWriteNonKana('3'); break;
-				case 0x34: MSXWriteNonKana('4'); break;
-				case 0x35: MSXWriteNonKana('5'); break;
-				case 0x36: MSXWriteNonKana('6'); break;
-				case 0x37: MSXWriteNonKana('7'); break;
-				case 0x38: MSXWriteNonKana('8'); break;
-				case 0x39: MSXWriteNonKana('9'); break;
-				case 0x3A: MSXWriteNonKana(':'); break;
-				case 0x3B: MSXWriteNonKana(';'); break;
-				case 0x3C: MSXWriteNonKana('<'); break;
-				case 0x3D: MSXWriteNonKana('='); break;
-				case 0x3E: MSXWriteNonKana('>'); break;
-				case 0x3F: MSXWriteNonKana('?'); break;
-				case 0x40: MSXWriteNonKana('@'); break;
-				case 0x41: MSXWriteNonKana('A'); break;
-				case 0x42: MSXWriteNonKana('B'); break;
-				case 0x43: MSXWriteNonKana('C'); break;
-				case 0x44: MSXWriteNonKana('D'); break;
-				case 0x45: MSXWriteNonKana('E'); break;
-				case 0x46: MSXWriteNonKana('F'); break;
-				case 0x47: MSXWriteNonKana('G'); break;
-				case 0x48: MSXWriteNonKana('H'); break;
-				case 0x49: MSXWriteNonKana('I'); break;
-				case 0x4A: MSXWriteNonKana('J'); break;
-				case 0x4B: MSXWriteNonKana('K'); break;
-				case 0x4C: MSXWriteNonKana('L'); break;
-				case 0x4D: MSXWriteNonKana('M'); break;
-				case 0x4E: MSXWriteNonKana('N'); break;
-				case 0x4F: MSXWriteNonKana('O'); break;
-				case 0x50: MSXWriteNonKana('P'); break;
-				case 0x51: MSXWriteNonKana('Q'); break;
-				case 0x52: MSXWriteNonKana('R'); break;
-				case 0x53: MSXWriteNonKana('S'); break;
-				case 0x54: MSXWriteNonKana('T'); break;
-				case 0x55: MSXWriteNonKana('U'); break;
-				case 0x56: MSXWriteNonKana('V'); break;
-				case 0x57: MSXWriteNonKana('W'); break;
-				case 0x58: MSXWriteNonKana('X'); break;
-				case 0x59: MSXWriteNonKana('Y'); break;
-				case 0x5A: MSXWriteNonKana('Z'); break;
-				case 0x5B: MSXWriteNonKana('['); break;
-				case 0x5C: MSXWriteNonKana('¥'); break;
-				case 0x5D: MSXWriteNonKana(']'); break;
-				case 0x5E: MSXWriteNonKana('^'); break;
-				case 0x5F: MSXWriteNonKana('_'); break;
-				case 0x60: WriteShiftJISChar("＠"); break;
-				case 0x61: WriteShiftJISChar("Ａ"); break;
-				case 0x62: WriteShiftJISChar("Ｂ"); break;
-				case 0x63: WriteShiftJISChar("Ｃ"); break;
-				case 0x64: WriteShiftJISChar("Ｄ"); break;
-				case 0x65: WriteShiftJISChar("Ｅ"); break;
-				case 0x66: WriteShiftJISChar("Ｆ"); break;
-				case 0x67: WriteShiftJISChar("Ｇ"); break;
-				case 0x68: WriteShiftJISChar("Ｈ"); break;
-				case 0x69: WriteShiftJISChar("Ｉ"); break;
-				case 0x6A: WriteShiftJISChar("Ｊ"); break;
-				case 0x6B: WriteShiftJISChar("Ｋ"); break;
-				case 0x6C: WriteShiftJISChar("Ｌ"); break;
-				case 0x6D: WriteShiftJISChar("Ｍ"); break;
-				case 0x6E: WriteShiftJISChar("Ｎ"); break;
-				case 0x6F: WriteShiftJISChar("Ｏ"); break;
-				case 0x70: WriteShiftJISChar("Ｐ"); break;
-				case 0x71: WriteShiftJISChar("Ｑ"); break;
-				case 0x72: WriteShiftJISChar("Ｒ"); break;
-				case 0x73: WriteShiftJISChar("Ｓ"); break;
-				case 0x74: WriteShiftJISChar("Ｔ"); break;
-				case 0x75: WriteShiftJISChar("Ｕ"); break;
-				case 0x76: WriteShiftJISChar("Ｖ"); break;
-				case 0x77: WriteShiftJISChar("Ｗ"); break;
-				case 0x78: WriteShiftJISChar("Ｘ"); break;
-				case 0x79: WriteShiftJISChar("Ｙ"); break;
-				case 0x7A: WriteShiftJISChar("Ｚ"); break;
-				case 0x7B: WriteShiftJISChar("｛"); break; // impossible outside of AG00
-				case 0x7C: WriteShiftJISChar("¥"); break;
-				case 0x7D: WriteShiftJISChar("｝"); break; // impossible outside of AG00
-				case 0x7E: WriteShiftJISChar("＾"); break;
-				// 0x7F to 0x85 invalid
-				case 0x86: WriteShiftJISChar("を"); break;
-				case 0x87: WriteShiftJISChar("ぁ"); break;
-				case 0x88: WriteShiftJISChar("ぃ"); break;
-				case 0x89: WriteShiftJISChar("ぅ"); break;
-				case 0x8A: WriteShiftJISChar("ぇ"); break;
-				case 0x8B: WriteShiftJISChar("ぉ"); break;
-				case 0x8C: WriteShiftJISChar("ゃ"); break;
-				case 0x8D: WriteShiftJISChar("ゅ"); break;
-				case 0x8E: WriteShiftJISChar("ょ"); break;
-				case 0x8F: WriteShiftJISChar("っ"); break;
-				// 0x90 invalid
-				case 0x91: WriteShiftJISChar("あ"); break;
-				case 0x92: WriteShiftJISChar("い"); break;
-				case 0x93: WriteShiftJISChar("う"); break;
-				case 0x94: WriteShiftJISChar("え"); break;
-				case 0x95: WriteShiftJISChar("お"); break;
-				case 0x96: WriteShiftJISChar("か"); break;
-				case 0x97: WriteShiftJISChar("き"); break;
-				case 0x98: WriteShiftJISChar("く"); break;
-				case 0x99: WriteShiftJISChar("け"); break;
-				case 0x9A: WriteShiftJISChar("こ"); break;
-				case 0x9B: WriteShiftJISChar("さ"); break;
-				case 0x9C: WriteShiftJISChar("し"); break;
-				case 0x9D: WriteShiftJISChar("す"); break;
-				case 0x9E: WriteShiftJISChar("せ"); break;
-				case 0x9F: WriteShiftJISChar("そ"); break;
-				// 0xA0 invalid
-				case 0xA1: WriteShiftJISChar("｡"); break;
-				case 0xA2: WriteShiftJISChar("｢"); break;
-				case 0xA3: WriteShiftJISChar("｣"); break;
-				case 0xA4: WriteShiftJISChar("､"); break;
-				case 0xA5: WriteShiftJISChar("・"); break;
-				case 0xA6: WriteShiftJISChar("ヲ"); break;
-				case 0xA7: WriteShiftJISChar("ァ"); break;
-				case 0xA8: WriteShiftJISChar("ィ"); break;
-				case 0xA9: WriteShiftJISChar("ゥ"); break;
-				case 0xAA: WriteShiftJISChar("ェ"); break;
-				case 0xAB: WriteShiftJISChar("ォ"); break;
-				case 0xAC: WriteShiftJISChar("ャ"); break;
-				case 0xAD: WriteShiftJISChar("ュ"); break;
-				case 0xAE: WriteShiftJISChar("ョ"); break;
-				case 0xAF: WriteShiftJISChar("ッ"); break;
-				case 0xB0: WriteShiftJISChar("ー"); break;
-				case 0xB1: WriteShiftJISChar("ア"); break;
-				case 0xB2: WriteShiftJISChar("イ"); break;
-				case 0xB3: WriteShiftJISChar("ウ"); break;
-				case 0xB4: WriteShiftJISChar("エ"); break;
-				case 0xB5: WriteShiftJISChar("オ"); break;
-				case 0xB6: WriteShiftJISChar("カ"); break;
-				case 0xB7: WriteShiftJISChar("キ"); break;
-				case 0xB8: WriteShiftJISChar("ク"); break;
-				case 0xB9: WriteShiftJISChar("ケ"); break;
-				case 0xBA: WriteShiftJISChar("コ"); break;
-				case 0xBB: WriteShiftJISChar("サ"); break;
-				case 0xBC: WriteShiftJISChar("シ"); break;
-				case 0xBD: WriteShiftJISChar("ス"); break;
-				case 0xBE: WriteShiftJISChar("セ"); break;
-				case 0xBF: WriteShiftJISChar("ソ"); break;
-				case 0xC0: WriteShiftJISChar("タ"); break;
-				case 0xC1: WriteShiftJISChar("チ"); break;
-				case 0xC2: WriteShiftJISChar("ツ"); break;
-				case 0xC3: WriteShiftJISChar("テ"); break;
-				case 0xC4: WriteShiftJISChar("ト"); break;
-				case 0xC5: WriteShiftJISChar("ナ"); break;
-				case 0xC6: WriteShiftJISChar("ニ"); break;
-				case 0xC7: WriteShiftJISChar("ヌ"); break;
-				case 0xC8: WriteShiftJISChar("ネ"); break;
-				case 0xC9: WriteShiftJISChar("ノ"); break;
-				case 0xCA: WriteShiftJISChar("ハ"); break;
-				case 0xCB: WriteShiftJISChar("ヒ"); break;
-				case 0xCC: WriteShiftJISChar("フ"); break;
-				case 0xCD: WriteShiftJISChar("ヘ"); break;
-				case 0xCE: WriteShiftJISChar("ホ"); break;
-				case 0xCF: WriteShiftJISChar("マ"); break;
-				case 0xD0: WriteShiftJISChar("ミ"); break;
-				case 0xD1: WriteShiftJISChar("ム"); break;
-				case 0xD2: WriteShiftJISChar("メ"); break;
-				case 0xD3: WriteShiftJISChar("モ"); break;
-				case 0xD4: WriteShiftJISChar("ヤ"); break;
-				case 0xD5: WriteShiftJISChar("ユ"); break;
-				case 0xD6: WriteShiftJISChar("ヨ"); break;
-				case 0xD7: WriteShiftJISChar("ラ"); break;
-				case 0xD8: WriteShiftJISChar("リ"); break;
-				case 0xD9: WriteShiftJISChar("ル"); break;
-				case 0xDA: WriteShiftJISChar("レ"); break;
-				case 0xDB: WriteShiftJISChar("ロ"); break;
-				case 0xDC: WriteShiftJISChar("ワ"); break;
-				case 0xDD: WriteShiftJISChar("ン"); break;
-				case 0xDE:
-					if(parent.MergeDiacritic() && lastMSXKana != ' ') MSXConvertLastKana('゛');
-					else WriteShiftJISChar("゛");
-					break;
-				case 0xDF:
-					if(parent.MergeDiacritic() && lastMSXKana != ' ') MSXConvertLastKana('゜');
-					else WriteShiftJISChar("゜");
-					break;
-				case 0xE0: WriteShiftJISChar("た"); break;
-				case 0xE1: WriteShiftJISChar("ち"); break;
-				case 0xE2: WriteShiftJISChar("つ"); break;
-				case 0xE3: WriteShiftJISChar("て"); break;
-				case 0xE4: WriteShiftJISChar("と"); break;
-				case 0xE5: WriteShiftJISChar("な"); break;
-				case 0xE6: WriteShiftJISChar("に"); break;
-				case 0xE7: WriteShiftJISChar("ぬ"); break;
-				case 0xE8: WriteShiftJISChar("ね"); break;
-				case 0xE9: WriteShiftJISChar("の"); break;
-				case 0xEA: WriteShiftJISChar("は"); break;
-				case 0xEB: WriteShiftJISChar("ひ"); break;
-				case 0xEC: WriteShiftJISChar("ふ"); break;
-				case 0xED: WriteShiftJISChar("へ"); break;
-				case 0xEE: WriteShiftJISChar("ほ"); break;
-				case 0xEF: WriteShiftJISChar("ま"); break;
-				case 0xF0: WriteShiftJISChar("み"); break;
-				case 0xF1: WriteShiftJISChar("む"); break;
-				case 0xF2: WriteShiftJISChar("め"); break;
-				case 0xF3: WriteShiftJISChar("も"); break;
-				case 0xF4: WriteShiftJISChar("や"); break;
-				case 0xF5: WriteShiftJISChar("ゆ"); break;
-				case 0xF6: WriteShiftJISChar("よ"); break;
-				case 0xF7: WriteShiftJISChar("ら"); break;
-				case 0xF8: WriteShiftJISChar("り"); break;
-				case 0xF9: WriteShiftJISChar("る"); break;
-				case 0xFA: WriteShiftJISChar("れ"); break;
-				case 0xFB: WriteShiftJISChar("ろ"); break;
-				case 0xFC: WriteShiftJISChar("わ"); break;
-				case 0xFD: WriteShiftJISChar("ん"); break;
-				// 0xFE - 0xFF invalid
-				default:
-					if(decompileMode == DecompileModeType.AG00)
+				directoryLine += Convert.ToChar(scenarioData[scenarioAddress]);
+				scenarioAddress++;
+			}
+			string[] directory = directoryLine.Split(',');
+			int totalVerbs = Int32.Parse(directory[1]);
+			int totalObjects = Int32.Parse(directory[2]);
+
+			string verbFile = Path.Combine(codeDirectoryName, DecompilerForm.FILE_VERBS);
+			string objectFile = Path.Combine(codeDirectoryName, DecompilerForm.FILE_OBJECTS);
+			SetOutputFile(verbFile);
+			int lineCount = 0;
+
+			scenarioAddress++;
+			if(scenarioData[scenarioAddress] == '\n') scenarioAddress++;
+
+			// Start the loop after the linebreak and continue to the end.
+			while(scenarioAddress < scenarioData.Length)
+			{
+				byte code = scenarioData[scenarioAddress++];
+
+				// Skip null characters (the file typically ends with a crop of them to round out the sector size,
+				// something that's not important any longer). We also do not need the 0x1A end of file character.
+				if(code == 0 || code == 0x1a) continue;
+
+				if(code == '\r')
+				{
+					// AG00 sometimes uses \r\n linebreaks, so skip the \n.
+					if(scenarioAddress < scenarioData.Length - 1 && scenarioData[scenarioAddress] == '\n') scenarioAddress++;
+					WriteByte(code);
+
+					if(lineCount > -1)
 					{
-						RaiseError("Unknown text output: \"" + c + "\" at AG00 byte index " + parent.FileIndex +
-							"." + Environment.NewLine);
+						lineCount++;
+
+						if(lineCount >= totalVerbs)
+						{
+							SetOutputFile(objectFile);
+							lineCount = -1;
+						}
 					}
-					else
-					{
-						RaiseError("Unknown text output: \"" + c + "\" at page " + curPage + " addr " +
-							scenarioAddress + "." + Environment.NewLine);
-					}
-					return false;
+				}
+				else
+				{
+					ProcessMSXChar(Convert.ToChar(code));
+				}
+			}
+		}
+
+		public bool ProcessMSXChar(char c, bool overrideNewline = false)
+		{
+			if(decompileMode == DecompileModeType.SuddenEOF) return false;
+
+			// All MSX characters are single-byte, which simplifies things immensely.
+			if(!activeMSXMessage && !overrideNewline)
+			{
+				activeMSXMessage = true;
+
+				if(decompileMode == DecompileModeType.ProcessCode)
+				{
+					WriteText(new string(' ', nestingLevel * 4) + "'");
+				}
 			}
 
+			if(decompileMode == DecompileModeType.AG00 || decompileMode == DecompileModeType.ProcessCode)
+			{
+				int charVal = Convert.ToInt32(c);
+
+				switch(charVal)
+				{
+					case 0x00: MSXWriteNonKana(' '); break;
+					case 0x01: MSXWriteNonKana('!'); break;
+					case 0x02: MSXWriteNonKana('@'); break; // should be impossible outside of AG00, since it's a command
+					case 0x03: MSXWriteNonKana('#'); break;
+					case 0x04: MSXWriteNonKana('$'); break;
+					case 0x05: MSXWriteNonKana('%'); break;
+					case 0x06: MSXWriteNonKana('&'); break;
+					case 0x07: MSXWriteNonKana('\''); break; // impossible outside of AG00
+					case 0x08: MSXWriteNonKana('('); break;
+					case 0x09: MSXWriteNonKana(')'); break;
+					case 0x0A: MSXWriteNonKana('*'); break;
+					case 0x0B: MSXWriteNonKana('+'); break;
+					case 0x0C: MSXWriteNonKana(','); break;
+					case 0x0D: MSXWriteNonKana('-'); break;
+					case 0x0E: MSXWriteNonKana('.'); break;
+					case 0x0F: MSXWriteNonKana('/'); break; // impossible outside of AG00
+					case 0x10: MSXWriteNonKana('0'); break;
+					case 0x11: MSXWriteNonKana('1'); break;
+					case 0x12: MSXWriteNonKana('2'); break;
+					case 0x13: MSXWriteNonKana('3'); break;
+					case 0x14: MSXWriteNonKana('4'); break;
+					case 0x15: MSXWriteNonKana('5'); break;
+					case 0x16: MSXWriteNonKana('6'); break;
+					case 0x17: MSXWriteNonKana('7'); break;
+					case 0x18: MSXWriteNonKana('8'); break;
+					case 0x19: MSXWriteNonKana('9'); break;
+					case 0x1A: MSXWriteNonKana('['); break;
+					case 0x1B: MSXWriteNonKana(']'); break;
+					case 0x1C: MSXWriteNonKana('<'); break;
+					case 0x1D: MSXWriteNonKana('='); break;
+					case 0x1E: MSXWriteNonKana('>'); break;
+					case 0x1F: MSXWriteNonKana('?'); break;
+					// 0x20 invalid
+					// 0x21 through 5f are mostly impossible outside of AG00 due to being ASCII characters/commands. The
+					// symbols are guesswork, since most of them are identical to the above.
+					case 0x21: MSXWriteNonKana('!'); break;
+					case 0x22: MSXWriteNonKana('"'); break;
+					case 0x23: MSXWriteNonKana('#'); break;
+					case 0x24: MSXWriteNonKana('$'); break;
+					case 0x25: MSXWriteNonKana('%'); break;
+					case 0x26: MSXWriteNonKana('&'); break;
+					case 0x27: MSXWriteNonKana('\''); break;
+					case 0x28: MSXWriteNonKana('('); break;
+					case 0x29: MSXWriteNonKana(')'); break;
+					case 0x2A: MSXWriteNonKana('*'); break;
+					case 0x2B: MSXWriteNonKana('+'); break;
+					case 0x2C: MSXWriteNonKana(','); break;
+					case 0x2D: MSXWriteNonKana('-'); break;
+					case 0x2E: MSXWriteNonKana('.'); break;
+					case 0x2F: MSXWriteNonKana('/'); break;
+					case 0x30: MSXWriteNonKana('0'); break;
+					case 0x31: MSXWriteNonKana('1'); break;
+					case 0x32: MSXWriteNonKana('2'); break;
+					case 0x33: MSXWriteNonKana('3'); break;
+					case 0x34: MSXWriteNonKana('4'); break;
+					case 0x35: MSXWriteNonKana('5'); break;
+					case 0x36: MSXWriteNonKana('6'); break;
+					case 0x37: MSXWriteNonKana('7'); break;
+					case 0x38: MSXWriteNonKana('8'); break;
+					case 0x39: MSXWriteNonKana('9'); break;
+					case 0x3A: MSXWriteNonKana(':'); break;
+					case 0x3B: MSXWriteNonKana(';'); break;
+					case 0x3C: MSXWriteNonKana('<'); break;
+					case 0x3D: MSXWriteNonKana('='); break;
+					case 0x3E: MSXWriteNonKana('>'); break;
+					case 0x3F: MSXWriteNonKana('?'); break;
+					case 0x40: MSXWriteNonKana('@'); break;
+					case 0x41: MSXWriteNonKana('A'); break;
+					case 0x42: MSXWriteNonKana('B'); break;
+					case 0x43: MSXWriteNonKana('C'); break;
+					case 0x44: MSXWriteNonKana('D'); break;
+					case 0x45: MSXWriteNonKana('E'); break;
+					case 0x46: MSXWriteNonKana('F'); break;
+					case 0x47: MSXWriteNonKana('G'); break;
+					case 0x48: MSXWriteNonKana('H'); break;
+					case 0x49: MSXWriteNonKana('I'); break;
+					case 0x4A: MSXWriteNonKana('J'); break;
+					case 0x4B: MSXWriteNonKana('K'); break;
+					case 0x4C: MSXWriteNonKana('L'); break;
+					case 0x4D: MSXWriteNonKana('M'); break;
+					case 0x4E: MSXWriteNonKana('N'); break;
+					case 0x4F: MSXWriteNonKana('O'); break;
+					case 0x50: MSXWriteNonKana('P'); break;
+					case 0x51: MSXWriteNonKana('Q'); break;
+					case 0x52: MSXWriteNonKana('R'); break;
+					case 0x53: MSXWriteNonKana('S'); break;
+					case 0x54: MSXWriteNonKana('T'); break;
+					case 0x55: MSXWriteNonKana('U'); break;
+					case 0x56: MSXWriteNonKana('V'); break;
+					case 0x57: MSXWriteNonKana('W'); break;
+					case 0x58: MSXWriteNonKana('X'); break;
+					case 0x59: MSXWriteNonKana('Y'); break;
+					case 0x5A: MSXWriteNonKana('Z'); break;
+					case 0x5B: MSXWriteNonKana('['); break;
+					case 0x5C: MSXWriteNonKana('¥'); break;
+					case 0x5D: MSXWriteNonKana(']'); break;
+					case 0x5E: MSXWriteNonKana('^'); break;
+					case 0x5F: MSXWriteNonKana('_'); break;
+					case 0x60: WriteShiftJISChar("＠"); break;
+					case 0x61: WriteShiftJISChar("Ａ"); break;
+					case 0x62: WriteShiftJISChar("Ｂ"); break;
+					case 0x63: WriteShiftJISChar("Ｃ"); break;
+					case 0x64: WriteShiftJISChar("Ｄ"); break;
+					case 0x65: WriteShiftJISChar("Ｅ"); break;
+					case 0x66: WriteShiftJISChar("Ｆ"); break;
+					case 0x67: WriteShiftJISChar("Ｇ"); break;
+					case 0x68: WriteShiftJISChar("Ｈ"); break;
+					case 0x69: WriteShiftJISChar("Ｉ"); break;
+					case 0x6A: WriteShiftJISChar("Ｊ"); break;
+					case 0x6B: WriteShiftJISChar("Ｋ"); break;
+					case 0x6C: WriteShiftJISChar("Ｌ"); break;
+					case 0x6D: WriteShiftJISChar("Ｍ"); break;
+					case 0x6E: WriteShiftJISChar("Ｎ"); break;
+					case 0x6F: WriteShiftJISChar("Ｏ"); break;
+					case 0x70: WriteShiftJISChar("Ｐ"); break;
+					case 0x71: WriteShiftJISChar("Ｑ"); break;
+					case 0x72: WriteShiftJISChar("Ｒ"); break;
+					case 0x73: WriteShiftJISChar("Ｓ"); break;
+					case 0x74: WriteShiftJISChar("Ｔ"); break;
+					case 0x75: WriteShiftJISChar("Ｕ"); break;
+					case 0x76: WriteShiftJISChar("Ｖ"); break;
+					case 0x77: WriteShiftJISChar("Ｗ"); break;
+					case 0x78: WriteShiftJISChar("Ｘ"); break;
+					case 0x79: WriteShiftJISChar("Ｙ"); break;
+					case 0x7A: WriteShiftJISChar("Ｚ"); break;
+					case 0x7B: WriteShiftJISChar("｛"); break; // impossible outside of AG00
+					case 0x7C: WriteShiftJISChar("¥"); break;
+					case 0x7D: WriteShiftJISChar("｝"); break; // impossible outside of AG00
+					case 0x7E: WriteShiftJISChar("＾"); break;
+					// 0x7F to 0x85 invalid
+					case 0x86: WriteShiftJISChar("を"); break;
+					case 0x87: WriteShiftJISChar("ぁ"); break;
+					case 0x88: WriteShiftJISChar("ぃ"); break;
+					case 0x89: WriteShiftJISChar("ぅ"); break;
+					case 0x8A: WriteShiftJISChar("ぇ"); break;
+					case 0x8B: WriteShiftJISChar("ぉ"); break;
+					case 0x8C: WriteShiftJISChar("ゃ"); break;
+					case 0x8D: WriteShiftJISChar("ゅ"); break;
+					case 0x8E: WriteShiftJISChar("ょ"); break;
+					case 0x8F: WriteShiftJISChar("っ"); break;
+					// 0x90 invalid
+					case 0x91: WriteShiftJISChar("あ"); break;
+					case 0x92: WriteShiftJISChar("い"); break;
+					case 0x93: WriteShiftJISChar("う"); break;
+					case 0x94: WriteShiftJISChar("え"); break;
+					case 0x95: WriteShiftJISChar("お"); break;
+					case 0x96: WriteShiftJISChar("か"); break;
+					case 0x97: WriteShiftJISChar("き"); break;
+					case 0x98: WriteShiftJISChar("く"); break;
+					case 0x99: WriteShiftJISChar("け"); break;
+					case 0x9A: WriteShiftJISChar("こ"); break;
+					case 0x9B: WriteShiftJISChar("さ"); break;
+					case 0x9C: WriteShiftJISChar("し"); break;
+					case 0x9D: WriteShiftJISChar("す"); break;
+					case 0x9E: WriteShiftJISChar("せ"); break;
+					case 0x9F: WriteShiftJISChar("そ"); break;
+					// 0xA0 invalid
+					case 0xA1: WriteShiftJISChar("｡"); break;
+					case 0xA2: WriteShiftJISChar("｢"); break;
+					case 0xA3: WriteShiftJISChar("｣"); break;
+					case 0xA4: WriteShiftJISChar("､"); break;
+					case 0xA5: WriteShiftJISChar("・"); break;
+					case 0xA6: WriteShiftJISChar("ヲ"); break;
+					case 0xA7: WriteShiftJISChar("ァ"); break;
+					case 0xA8: WriteShiftJISChar("ィ"); break;
+					case 0xA9: WriteShiftJISChar("ゥ"); break;
+					case 0xAA: WriteShiftJISChar("ェ"); break;
+					case 0xAB: WriteShiftJISChar("ォ"); break;
+					case 0xAC: WriteShiftJISChar("ャ"); break;
+					case 0xAD: WriteShiftJISChar("ュ"); break;
+					case 0xAE: WriteShiftJISChar("ョ"); break;
+					case 0xAF: WriteShiftJISChar("ッ"); break;
+					case 0xB0: WriteShiftJISChar("ー"); break;
+					case 0xB1: WriteShiftJISChar("ア"); break;
+					case 0xB2: WriteShiftJISChar("イ"); break;
+					case 0xB3: WriteShiftJISChar("ウ"); break;
+					case 0xB4: WriteShiftJISChar("エ"); break;
+					case 0xB5: WriteShiftJISChar("オ"); break;
+					case 0xB6: WriteShiftJISChar("カ"); break;
+					case 0xB7: WriteShiftJISChar("キ"); break;
+					case 0xB8: WriteShiftJISChar("ク"); break;
+					case 0xB9: WriteShiftJISChar("ケ"); break;
+					case 0xBA: WriteShiftJISChar("コ"); break;
+					case 0xBB: WriteShiftJISChar("サ"); break;
+					case 0xBC: WriteShiftJISChar("シ"); break;
+					case 0xBD: WriteShiftJISChar("ス"); break;
+					case 0xBE: WriteShiftJISChar("セ"); break;
+					case 0xBF: WriteShiftJISChar("ソ"); break;
+					case 0xC0: WriteShiftJISChar("タ"); break;
+					case 0xC1: WriteShiftJISChar("チ"); break;
+					case 0xC2: WriteShiftJISChar("ツ"); break;
+					case 0xC3: WriteShiftJISChar("テ"); break;
+					case 0xC4: WriteShiftJISChar("ト"); break;
+					case 0xC5: WriteShiftJISChar("ナ"); break;
+					case 0xC6: WriteShiftJISChar("ニ"); break;
+					case 0xC7: WriteShiftJISChar("ヌ"); break;
+					case 0xC8: WriteShiftJISChar("ネ"); break;
+					case 0xC9: WriteShiftJISChar("ノ"); break;
+					case 0xCA: WriteShiftJISChar("ハ"); break;
+					case 0xCB: WriteShiftJISChar("ヒ"); break;
+					case 0xCC: WriteShiftJISChar("フ"); break;
+					case 0xCD: WriteShiftJISChar("ヘ"); break;
+					case 0xCE: WriteShiftJISChar("ホ"); break;
+					case 0xCF: WriteShiftJISChar("マ"); break;
+					case 0xD0: WriteShiftJISChar("ミ"); break;
+					case 0xD1: WriteShiftJISChar("ム"); break;
+					case 0xD2: WriteShiftJISChar("メ"); break;
+					case 0xD3: WriteShiftJISChar("モ"); break;
+					case 0xD4: WriteShiftJISChar("ヤ"); break;
+					case 0xD5: WriteShiftJISChar("ユ"); break;
+					case 0xD6: WriteShiftJISChar("ヨ"); break;
+					case 0xD7: WriteShiftJISChar("ラ"); break;
+					case 0xD8: WriteShiftJISChar("リ"); break;
+					case 0xD9: WriteShiftJISChar("ル"); break;
+					case 0xDA: WriteShiftJISChar("レ"); break;
+					case 0xDB: WriteShiftJISChar("ロ"); break;
+					case 0xDC: WriteShiftJISChar("ワ"); break;
+					case 0xDD: WriteShiftJISChar("ン"); break;
+					case 0xDE:
+						if(parent.MergeDiacritic() && lastMSXKana != ' ') MSXConvertLastKana('゛');
+						else WriteShiftJISChar("゛");
+						break;
+					case 0xDF:
+						if(parent.MergeDiacritic() && lastMSXKana != ' ') MSXConvertLastKana('゜');
+						else WriteShiftJISChar("゜");
+						break;
+					case 0xE0: WriteShiftJISChar("た"); break;
+					case 0xE1: WriteShiftJISChar("ち"); break;
+					case 0xE2: WriteShiftJISChar("つ"); break;
+					case 0xE3: WriteShiftJISChar("て"); break;
+					case 0xE4: WriteShiftJISChar("と"); break;
+					case 0xE5: WriteShiftJISChar("な"); break;
+					case 0xE6: WriteShiftJISChar("に"); break;
+					case 0xE7: WriteShiftJISChar("ぬ"); break;
+					case 0xE8: WriteShiftJISChar("ね"); break;
+					case 0xE9: WriteShiftJISChar("の"); break;
+					case 0xEA: WriteShiftJISChar("は"); break;
+					case 0xEB: WriteShiftJISChar("ひ"); break;
+					case 0xEC: WriteShiftJISChar("ふ"); break;
+					case 0xED: WriteShiftJISChar("へ"); break;
+					case 0xEE: WriteShiftJISChar("ほ"); break;
+					case 0xEF: WriteShiftJISChar("ま"); break;
+					case 0xF0: WriteShiftJISChar("み"); break;
+					case 0xF1: WriteShiftJISChar("む"); break;
+					case 0xF2: WriteShiftJISChar("め"); break;
+					case 0xF3: WriteShiftJISChar("も"); break;
+					case 0xF4: WriteShiftJISChar("や"); break;
+					case 0xF5: WriteShiftJISChar("ゆ"); break;
+					case 0xF6: WriteShiftJISChar("よ"); break;
+					case 0xF7: WriteShiftJISChar("ら"); break;
+					case 0xF8: WriteShiftJISChar("り"); break;
+					case 0xF9: WriteShiftJISChar("る"); break;
+					case 0xFA: WriteShiftJISChar("れ"); break;
+					case 0xFB: WriteShiftJISChar("ろ"); break;
+					case 0xFC: WriteShiftJISChar("わ"); break;
+					case 0xFD: WriteShiftJISChar("ん"); break;
+					// 0xFE - 0xFF invalid
+					default:
+						if(decompileMode == DecompileModeType.AG00)
+						{
+							RaiseError("Unknown text output: \"" + c + "\" at AG00 byte index " + scenarioAddress +
+								"." + Environment.NewLine);
+						}
+						else
+						{
+							RaiseError("Unknown text output: \"" + c + "\" at page " + curPage + " addr " +
+								scenarioAddress + "." + Environment.NewLine);
+						}
+						return false;
+				}
+			}
 			return true;
 		}
 

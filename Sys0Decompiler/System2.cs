@@ -950,12 +950,22 @@ namespace Sys0Decompiler
 			StartLine();
 
 			if(decompileMode == DecompileModeType.ProcessCode)
-				WriteText("M '");
+				WriteText("M ");
 
-			DGetAndWriteTextParam(':');
+			char peek = DPeekChar();
+			if(peek == '\'' || peek == '"')
+			{
+				peek = DGetChar();
+				DGetAndWriteMessage((byte)peek);
+			}
+			else
+			{
+				DGetAndWriteMessage(0);
+				scenarioAddress++; // skip end terminator
+			}
 
 			if(decompileMode == DecompileModeType.ProcessCode)
-				WriteText("':" + Environment.NewLine);
+				WriteText(":" + Environment.NewLine);
 		}
 
 		protected override void decompile_cmd_n()
@@ -1053,7 +1063,6 @@ namespace Sys0Decompiler
 			StartLine();
 
 			string res = "V";
-			int cnt = 0;
 
 			int cmd = DGetByte();
 

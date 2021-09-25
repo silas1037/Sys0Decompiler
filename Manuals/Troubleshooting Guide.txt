@@ -1,0 +1,128 @@
+Sys0Decompiler Troubleshooting Guide
+
+See the "Known Fixes" section at the end of this file for known problems specific to certain games. See "Crash Support" for known causes of crashes when running a game in system3-sdl2.
+
+
+General Problems
+
+System 2
+
+System 2 is still widely unsupported. It is not recommended that you attempt to localize ANY System 2 games. Use alternate versions wherever possible.
+
+
+
+Application Error - 0xc0000007b
+
+system3-sdl2 requires several DLLs to function. These are included in the release version of both it and SysEng. If these files go missing at some point in the localization process, the above error will appear on startup.  It is also possible that the DLLs somehow became mis-matched during the decompile process: 64-bit executibles require 64-bit DLLs, and 32-bit requires 32-bit. Make sure to also use the version of each DLL supported by the system3-sdl2 project.
+
+
+
+Code Archive Switching
+
+Sys0Decompiler can only compile game code into a single ADISK.DAT file at the time of writing.  Normally this is an improvement, but there is an obscure situation where this can cause problems: in System 3.0, if the current "tvar" is 31, the M command will overwrite the current code file. See the System Command Manual for more details. Unfortunately, there is no easy way to search for this, although try searching for the word "DISK" at the very least. If you discover this situation in your code, you will need to develop a workaround for your specific situation.
+
+
+
+Troubleshooting Issues with Multiple Disk Files
+
+Older Alicesoft games split their code across multiple disk files entitled ADISK.DAT, BDISK.DAT, etc, depending on platform. Unfortunately, this division sometimes results in strange irregularities. Examples include:
+
+    - Identical SCO files on multiple disks.
+    - Distinct files with the same name on multiple disks.
+    - Alternate versions of specific .DAT files included on multiple disks to minimize disk-swapping (for example, Rance 1 on the X68000 contains different copies of ADISK.DAT on every disk with different data depending on the disk's needs). These may include identical or distinct files. 
+
+Not only do these potential causes make a single, unified solution for Sys0Decompiler impossible, but some can become the source of decompile errors by damaging or confusing file headers. The only solution is for the end programmer to diagnose and correct the problem manually using ALDExplorer. This is not an easy process and you may want to consider using alternate versions of the game if possible.
+
+The header errors caused by identical files on multiple disks can typically be fixed in the following fashion, which doubles as a useful first test if you are unsure if the files are identical:
+
+	Using ALDDecompiler, you can extract compiled code files in .SCO format (note that SCO files are 1-oriented, so page0000.adv matches up with page0001.sco, and so on). You can use this to help solve the problem, as follows.
+
+	First, open the source DISK files and select Import/Export -> Export All to export the compiled .SCO files to an external folder. Then, select File -> Create Empty Archive File and choose to create a .DAT file (the file defaults to the name ACG.DAT, but we will change the name later). Next, select Import/Export -> Import and add new files... and select the contents of the .SCO folder. Save this file as ADISK.DAT (do not overwrite the original source, just in case), and decompile this version instead of the original.
+
+	If files are distinct on multiple disks, you will have to decompile them seperately and compare their output. At present, Sys0Decompiler can only decompile ADISK.DAT files followed by B, C, etc, with no way to decompile, say, BDISK.DAT directly. You will have to isolate and rename the archives to ADISK.DAT, one after another. Once you have the decompiled versions of multiple files, it will fall to you as the end programmer to resolve the issue of which code is called and when. On a hard drive with a single executible, we don't have the luxury of code files that can change form depending on the current "disk." 
+
+
+
+Game Crashes When Loading Save
+
+System 1-3.5 have very sensitive save files: the game marks the exact byte of current file associated with the Q (save) command. If this byte is moved by changes made higher in the current file, all saves will break! Other changes may also cause this error, often in unpredictable ways. Unfortunately, the only way to fix this is to undo the changes that led to the crash, or to start the game fresh. Unfortunately, you will probably go through several save files during development.
+
+Here are some best practices to keep this problem to a minimum:
+
+	1. Localize save and load menus, plus any other code on the pages in question, as early in the process as possible. Have editors go over the code early so that the localization can be set in stone to minimize changes to these particular files.
+	
+	2. Consider modifying the save and load files to put the Q command (and maybe even the L (Loading) commands) as high in the file as possible. This will minimize the opportunity for future changes to adjust its position within the file.
+	
+	3. If all else fails, don't be afraid to introduce your own cheats and debug options to make it as easy as possible to get back to your previous position in the game. You can remove them later... or even turn them into an optional cheat for the player!
+
+
+
+Text is Invisible, Menus Break
+
+Not all fonts support all characters. For example, a font intended for English use might be missing Japanese character or even zankaku (Japanese full-width) versions of Latin characters. This is especially true of variable-width fonts. Make sure your game uses the Y 240, Y 242 and Y 243 commands to select your intended character set as explained above. Character set combinations can include:
+
+	1. Hankaku + Monospace
+	2. Zankaku + Monospace
+	
+On SysEng, you may also have to test:
+
+	3. Hankaku + Variable-Width
+	4. Zankaku + Variable-Width
+	
+If your font does not support your chosen character set, the text will appear invisible and the menu may experience errors.
+
+
+
+Page Size Limits
+
+System 1-3.0 have a hard, compiled page size limit of 65535 bytes. While all Alicesoft games obviously already fit within this limit, a localizer has to be careful not to exceed it. Unfortunately, UTF-8 characters take up much more data space than Shift-JIS, and this can easily turn a harmless file into an oversized one. Sys0Decompiler will warn the user if they've exceeded a file size limit, and does so at the point the decompile stops. Be warned that there may be other oversized files in the project!
+
+There is no universal method of fixing these problems, as the exact implementation will vary by circumstances. Thankfully, UTF-8 conversion will only change message characters, so the problem is more likely to occur during a linear text sequence than a complicated gameplay page, but the worst may happen. The programmer may have to create a new page file (at the end of the current order) to contain the oversized data.
+
+
+
+"Junk Code"
+
+"Junk Code" is code that exists beyond the EOF character that normally divides code in an DAT archive. Sometimes, this is random garbage data. Unfortunately, in a few poorly-coded examples like the standalone version of Dangerous Tengu Legend, junk code is actually used by the interpreter. Sys0Decompiler will produce a warning if it detects a label jump or call beyond the EOF character, but will not produce any junk code unless you select Advanced Settings -> Output Junk Code. Unfortunately, this will also free all the legitimate garbage.
+
+I recommend the game be decompiled normally, and then junk code decompiled to a seperate folder, at which point the programmer can compare the versions to correct the problem. That said, Dangerous Tengu Legend's case can be solved via a simpler method detailed in the "Known Fixes" section below.
+
+
+
+MSX Decompile Limitations
+
+MSX single-byte encoding support is experimental. It is not guarenteed to work. Details on the encoding, and potential problems that can occur during decompilatoin, follow below.
+
+While most Alicesoft games are written using some variant or direct ancestor of Shift-JIS, this is not true on all systems. The MSX sometimes uses a single-byte character encoding instead, as it does in Gakuen Senki. These encodings can cause problem during decompile. Once they are compiled into new-style code, these  problems can no longer occur.
+
+To make the most of the single-byte character space, MSX games use the full katakana character set and hiragana set, but both are limited to base characters, with the diacritics (dakuten and handakuten) appearing as seperate characters that appear to the right of the kana. So instead of having a distinct が (ga) character, the MSX game would display two characters: か (ka) and then ﾞ. Depending on your font, this character combination may be indistinguishbable from the real thing, but this is not universal. For clarity's sake, unless you specify otherwise in the menu, Sys0Decompiler will attempt to combine the hiragana with their diacritics to provide the accurate characters. If a diacritic appears next to an invalid character, they will be left seperate. You can disable this feature using Advanced Settings > Apply Single-Byte Diacritics.
+
+Because the MSX doesn't intend to output in only one character set like most later systems, the Hiragana and Katakana radio buttons are disabled when decompiling from MSX.
+
+Another problem with the MSX character set is that they make ambiguous use of the EOF character (0x1A). Normally used to mark the end of a file, the MSX character set both uses 0x1A to end files and to print the character '[' to the screen. It is unclear how Alicesoft games told these characters apart. While Sys0Decompiler should handle MSX 0x1A characters correctly, if you notice obvious mistakes in the decompiled code, activate "Output Junk Code," and all EOF characters will be treated as '[' instead.
+
+
+
+Known Fixes
+
+Some System 1 games include hard-coded features that can only be adjusted by modifying system3-sdl2 or SysEng. Hopefully they won't be required for any localization, but if it is, this code can be found at nact_sys1.cpp, NACT::opening().
+
+
+
+Known Fixes
+
+Some games experience problems during decompilation. If a fix for these problems is known, it is detailed below.
+
+	Dangerous Tengu Legend: The standalone version of Dangerous Tengu Legend suffers from "junk code." While this can be manually corrected, the easiest way to decompile Tengu is to use the version included in the FM-TOWNS release of Alice's Cottage 2 (Alice no Yakata II), as it doesn't suffer from this problem to begin with.
+
+
+
+Crash Troubleshooting
+
+This section will detail frequent crashes.
+
+system3-sdl2 and SysEng will crash if the game attempts to write too far off-screen. This is especially true if the programmer accidentally writes above or below the screen. Be careful with changing fonts, which might push text off the edge.
+
+Many functions will crash if given invalid data. Double-check your equations and the System Command Manual if you're having trouble with a specific command.
+
+If you have a dedicated programmer on your team familiar with C++, use a proper compiler and debugger to test the system3-sdl2 or SysEng. This will help you discover the exact causes of errors. Failing that, test your changes line-by-line if possible: even if you aren't certain why a problem is happening, you can at least find out where.

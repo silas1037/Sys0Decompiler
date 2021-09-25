@@ -1,0 +1,358 @@
+Sys0Decompiler Manual
+
+This manual will document the features of Sys0Decompiler. For an example use case and tutorial, see the Localization Guide.
+
+
+General Warning
+
+Not all games are currently compatible with Sys0Decompiler. Several games, especially System 2 games, use non-standard formats that will have to be individually supported in future versions. See the Playability Status page for a general gloss on supported games and game versions.
+	https://alicesoft.fandom.com/wiki/User_blog:RottenBlock/System_1-3_Games_Playability_Status
+
+
+
+Program Interface
+
+Main Menu
+
+	File
+	
+		Save Settings
+		
+			Use this menu option to save your settings manually. It is a good idea to save settings before trying a new program or setup. The save includes the Decompile Tab, Compile Tab, and menus. Sys0Decompiler will also save your current settings when you close the program. 
+		
+		Import Settings / Export Settings
+		
+			Export settings to an external file, or import them again. This allows you to save a seperate workspace for multiple projects.
+		
+		Exit
+		
+			Exits the program.
+		
+	Advanced Settings
+	
+		Advanced Settings are used in unusual edge cases while compiling and decompiling. Full details are written below in the relevant section (decompiling or compiling) below.
+		
+	Help
+	
+		Help menus.
+
+
+Decompile Tab
+
+The decompile tab includes the following settings:
+		
+	Data Directory and Target Directory
+
+		When decompiling, the program will attempt to take data from an ADISK.DAT file in the given Data Directory, and will also take data from any subsequent DISK files in strict alphabetical order: BDISK, CDISK, and so on. If a DISK file is missing, all subsequent files will be skipped, so be careful. The data directory should also include the AG00.DAT file, if present. 
+
+		The decompile will then create decompiled "page," "!verbs," and "!object" files in the Target Directory. page files are associated with DISK data files, and !verbs and !objects files with AG00.dat.
+
+	System Version
+	
+		Alicesoft DISK files do not contain any information on their version of System, and so the user must enter this manually. See below for a shortlist of available titles. If the incorrect System version is selected, expect to see unusual and potentially misleading errors.
+		
+			System 1: Little Vampire, Gakuen Senki, Rance 1 (non-DOS and Windows), Policewoman VX, Intruder, Crescent Moon Girl, Dangerous Tengu Legend, D.P.S., Rance 2 (non-Windows), Rance 2 Hint Disk, D.P.S. SG, Toushin Toshi (non-Windows), Toushin Toshi Hint Disk, Alice's Cottage 1.
+			
+			System 2: Rance 3 (non-Windows), Rance 3 Option Set, DALK (non-Windows), DALK Hint Disk, Dr. STOP! (non-Windows), Alice's Cottage 2, Super D.P.S., Prostudent G (Floppy version).
+			
+			System 3.0: Prostudent G (CD version), Ayumi-chan's Story (anime or live-action), Ayumi-chan's Story Hint Disk, Rance 4 (non-Windows), Rance 4 Hint Disk, AmbivalenZ, Space Bandit Fanny Bee, Otome Senki, Toushin Toshi 2 (non-Windows), Toushin Toshi 2 Graphic Disk, Alice's Cottage 3, Gakuen KING, Illusion of a Dream, Rance 4.1, Rance 4.2, D.P.S. All, Only You - The Decadent Juliettes, Toushin Toshi 2 - Soshite sorekara.
+	
+	Decompile Options
+	
+		The user can choose to decompile all data files, only DISK files, or only the AG00.DAT file. Generally, they should use the first option. Note that not all games have an AG00.DAT file: if this file is missing, Decompile All will not be affected, so there is no harm in using it by default.
+	
+	Variable Format
+	
+		System uses a strict variable-naming format. Most variables are named "VAR" followed by a four-digit number. However, the first 59 variables are also known by alternate names. Under the setting "Full Label Set" (the default), Sys0Decompiler will use these hardcoded names as shown below.
+		
+			VAR0000			: RND
+			VAR0001-VAR0020 : D01-D20
+			VAR0021-VAR0040 : U01-U20
+			VAR0041-VAR0056 : B01-B16
+			VAR0057			: M_X
+			VAR0058			: M_Y
+			
+		These names can give additional insight into the code's structure. See the System Command Manual for more details. If you would prefer to only use "VAR"-style labls, select "'VAR' Labels Only".
+
+	Game Encoding
+	
+		This section is used to select the game's encoding format. Unmodified Alicesoft games will either be in Shift-JIS format or the rarer MSX single-byte format (which only has experimental support in Sys0Decompiler). Sys0Decompiler can also create UTF-8 formatted game data. If you are attempting to decompile a UTF-8 compatible fan-patch, use that setting instead.
+		
+		Like with System Version, using the incorrect encoding can lead to unpredictable errors. If you're unsure about the current encoding, you may have to discover it via trial and error.
+		
+	Text Output Encoding
+	
+		Decompiled page, !verbs, and !objects files are plain text documents that use the encoding specified here. If the Game Encoding is Shift-JIS or MSX single-byte, the user can choose to decompiler to Shift-JIS or UTF-8 encoding. If the Game Encoding is UTF-8, it can ONLY be decompiled to UTF-8.
+		
+		Using UTF-8 is a one-way process: it is not possible to compile UTF-8 source files back to Shift-JIS. As a result, UTF-8 encoding should only be used if the user intends to localize a game to UTF-8.
+		
+	Shift-JIS Source Conversion
+	
+		When running, Alicesoft games will output EITHER hiragana and zankau (full-width) characters OR katakana and hankaku characters, swapping between the two using the Y 240 command. Despite this, the actual game data may include any mix of characters, and is often ecclectic and confusing.
+		
+		The user can choose to output source in either Hiragana/Zankaku, matching the output of Y 240, 1:; Katakana/Hankaku, matching the output of Y 240, 0:; or to output the Raw characters stored in data.
+
+		Note that, no matter your choice of output, Sys0Decompile will always output ASCII characters in hankaku format, to ease English localization. This may be changed in the future.
+		
+	Copy/Reverse Compile Settings
+	
+		By pressing this button, the program will attempt to "reverse" the settings currently entered into the Compile tab. This allows you to easily switch from compiling to decompiling the same project, or vice versa. Options are converted as follows:
+		
+			Compile Tab				->		Decompile Tab
+			
+			Source Directory		->		Target Directory
+			Target Directory		->		Data Directory
+			System Version			->		System Version
+			Compile Options			->		Decompile Options
+			Game Output Encoding	->		Game Encoding
+		
+	Decompile
+	
+		Begins the decompile process with the current settings.
+		
+	Decompile-Related Advanced Settings
+	
+		Output Junk Code
+		
+			Outputs "junk code" stored beyond the End of File character, usually the result of a poorly-programmed label jump or call. This should be left unchecked unless the decompiler detects junk code during a standard decompile, at which point it will warn you about the code.
+			
+			This option should be disabled when decompiling MSX single-byte code, as that encoding style makes different use of the EOF character.
+			
+			See the Troubleshooting Guide for more details.
+			
+		Apply Single-Byte Diacritics
+		
+			Only used when decompiling from MSX single-byte encoding. By necessity, MSX single-byte encoding places diacritic marks after the characters in question and merges them during gameplay. To ease localization, the decompile can combine these characters automatically. Enabled by default.
+			
+			See the Troubleshooting Guide for more details.
+			
+			
+
+Compile Tab
+
+	Source Directory and Target Directory
+
+		These fields should be set to the reverse of decompilation: the Source Directory should include source code (pages, !verbs.adv, and !objects.adv) while the Target Directory is used to output compiled ADISK.DAT and AG00.DAT files. The Target Directory can be a game's directory for easy testing, but be sure to backup the original data files!
+		
+		Note that Sys0Decompiler will always output a single, combined ADSIK.DAT file: original B-ZDISK files should be deleted. See the Troubleshooting Guide for more details.
+		
+	System Version
+	
+		As in the Decompile tab, above.
+		
+	Compile Options
+	
+		The reverse of decompilation: the user can choose to compile all files (creating both an ADISK.DAT and AG00.DAT file), only page files (creating an ADISK.DAT files), or only verbs and objects (creating an AG00.DAT file). Note that not all games include verbs and objects, but Compile All can still be used in those games without harm.
+		
+	Text Source Encoding
+	
+		Select the encoding of your text files. This should match the Text Output Encoding selected when compiling. If this is set incorrectly, the compiler may suffer unpredictable errors.
+		
+	Game Output Encoding
+	
+		Select the destination encoding for your game data files. It is possible, though not recommended, to create a UTF-8-compatible game by converting from Shift-JIS source files to UTF-8 game files, though it is preferable to decompile to UTF-8 in the first place.
+		
+		If your text source is UTF-8 encoded, your game data files must be UTF-8 encoded.
+		
+	
+	Copy/Reverse Decompile Settings
+	
+		By pressing this button, the program will attempt to "reverse" settings from the Decompile tab. This allows you to easily switch from decompiling to compiling the same project, or vice versa. Options are converted as follows:
+		
+			Decompile Tab			->		Compile Tab
+			
+			Data Directory			->		Target Directory
+			Target Directory		->		Source Directory
+			System Version			->		System Version
+			Decompile Options		->		Compile Options
+			Text Output Encoding	->		Text Source Encoding
+
+	Delete Temporary Files
+	
+		During compilation, the compiler will create temporary, compiled code files in .SCO format, which are then combined into a new ADISK.DAT. These SCO files will be deleted at the end of the compilation process by default, but can be retained by unchecking this box.
+		
+		SCO files can also be extracted from DISK files using ALDExplorer.
+		
+	Compile
+	
+		Begin compilation with the above settings.
+		
+	Compile-Related Advanced Settings
+	
+		Enables experimental support for decompiling the alternate, 3-parameter D command used in some System 2 games (as opposed to the standard 8-param variant). Unavailable in System 1 and 3.0. Not currently available for compilation.
+	
+	
+Other Topics
+	
+Gaiji
+
+As discussed in the Localization Guide, gaiji represent a set of custom characters allowed in older implementations of Shift-JIS. Alicesoft made use of gaiji during System 3.0. You can tell if your game supports gaiji based on the presence of the file GAIJI.DAT. Because these symbols cannot be displayed in a text file, Sys0Decompiler will decompile gaiji in the form "G+####", where #### is the character's original hexidecimal format.
+
+The compiler will convert any string reading "G+#" back to the intended gaiji format. Be careful: the compiler will not count the actual hexidecimal characters. It is the programmer's responsibility to keep the original gaiji intact.
+
+For legacy reasons, the compiler will also read "0x####" as gaiji.
+
+Gaiji is supported in Shift-JIS and UTF-8 encoding. There is currently no way of extracting the actual gaiji symbols from GAIJI.DAT.
+
+
+
+Program Warnings and Errors
+
+During compilation or decompilation, a number of warnings or errors may appear. This section will detail these messages and attempt to explain them. 
+
+Bear in mind that, like all programming, an error at one point in the program may cause misleading errors down the line. The original error might not even be reported due to the cascade effect. Only careful debugging will be able to find some problems.
+
+
+
+Compiler Warnings and Errors
+
+	"Source directory not found."
+	"[file name] not found in source directory."
+	
+		Input error, specified files or directory missing or entered incorrectly.
+		
+	
+	"Unknown command [character]."
+	"Invalid command [symbol.]"
+
+		The compiler has encountered an unknown command at the start of a line. See the System Command Manual for a full listing of commands for your current version of System.
+
+		"Invalid command" is the same, but indicates a command with character code >255.
+		
+		
+	"Warning: Command call does not end with correct closing mark: [x]"
+	
+		Commands must end with a certain delimeter, almost always a colon ":".
+		
+		
+	"Error, unknown var label [label]."
+	"Error, invalid argument in VAR variable number #."
+	
+		Variable error. Variables must be formatted in the structure "VAR####" or use one of the 59 reserved variable names (above).
+		
+
+	"\ Commands cannot be followed by a number other than 0 (indicating 'return')."
+	
+		\ commands (label calls) must be followed by a target label or the numeral 0, which indicates a return to a previous call command. Entering other digits is invalid.
+		
+		
+	"Int value expected."
+	"Value cannot be lower than #"
+	"Value cannot be higher than 255."
+	
+		A numeric value was incorrect at some point in the code. Follow the additional error description to find the problem.
+		
+		
+	"Text parameter not enclosed by quote mark."
+	
+		M commands must be followed by a text parameter encloded in quote marks (either '' or "").
+		
+		
+	"Delimeter [symbol] not found."
+	"Message does not end with close quotes."
+	
+		Message text or string text parameter did not end with a matching quote mark to its opening quote mark (i.e. if a message box begins with ', it must end with '). This may be user error or may be the sign of an unrelated syntax error.
+		
+		
+	"G+#### outside the gaiji range."
+		
+		Gaiji value incorrect (only occurs during UTF-8 encoding).
+	
+	
+	"Invalid constant: '#'"
+	"Invalid variable: '[var]'"
+	"Invalid entry in operator slot. Starts with '[x]'."
+	"Invalid entry in operand slot: '[x]'."
+	"Uneven number of opening and closing parentheses in calculation."
+	"Invalid equation segment '[x]'."
+	
+		Error during a mathematical calculation, as described. This may be the sign of a syntax error. Calculations are very sensitive, so consider using additional parentheses () to clarify your intent.
+		
+		
+	"Too many labels in file."
+	"Too many active branches in file (syntax error likely)."
+	
+		A single file can only contain 65535 labels and/or 65535 { branches. Because this number is so impossibly high for an uncommon resource, this error is likely a sign of some other problem.
+		
+		
+	"Page # is too long in the current encoding. Page size is #, max size is "65535."
+	"Address overflow error: page # exceeded max size (65535 bytes) while declaring a label, causing an error on line #. Compilation must stop."
+	"Address overflow error: page # exceeded max size (65535 bytes) while declaring a branch end, causing an error on line #. Compilation must stop."
+	"Address overflow error: page # exceeded max size (65535 bytes) while declaring a menu, causing an error on line #. Compilation must stop.""
+	
+		The above errors indicate that the current file has exceeded the 65535 byte size cap. This most often happens in the conversion to UTF-8. See the Troubleshooting Guide for more details.
+		
+		
+	"Null character in place of command. Null characters in this position may be innocent or or may sign of further errors. They should be manually investigated and then deleted."
+	
+		As written: the compiler is warning you of a situation that may be harmless or serious and must be manually investigated. Null characters may be invisible in some text editors, so be cautious.
+	
+		
+	"CGetAndWriteChar called out of index, column value too high."
+	"Invalid calculation, probable syntax error."
+
+		The above errors indicate that something has gone fatally wrong during the compile process. Check any other errors reported by the decompiler first to see if they fix these. If these errors are reported on their own, the likeliest answer is that the compile settings are incorrect.
+		
+		
+		
+		
+Decompiler Warnings and Errors
+
+	"Source directory not found."
+	"ADISK.DAT not found in source directory."
+	
+		Input error, specified files or directory missing or entered incorrectly.
+		
+
+	"Warning: Dummied commands ([list of commands]) found in page #. These commands are not yet supported by system3-sdl2 or SysEng. Modification of the system3-sdl2 source may be required to run this particular game."
+
+		Some commands are considered "dummied" in system3-sdl2 and SysEng. There are commands whose structure is known, allowing them to be compiled and decompiled, but will not work in-game. Only System 2 has unsupported letter commands, but all versions of System have some unsupported Y (extend) commands. Any unknown Y command is treated as "unsupported" by default.
+		
+		An unsupported command is not necessarily fatal: the game will still decompile or compile as expected, but actual play may be affected.
+
+		Many unsupported commands are not necessary to begin with, such as old image preloading commands (Y 5, possibly Y 6) that are no longer necessary. Once a command is proven unnecessary (such as Y 5), it is removed from the unsupported command list in newer versions of Sys0Decompiler and should no longer be reported.
+	
+
+	"Page # includes a call to Y 8, 31:. This is used to switch code archives with subsequent M commands. Sys0Decompiler only creates 
+	combined code archives. For this reason, these calls (both the Y and the M) should be investigated and eliminated before re-compilation. See the manual for more details."
+	
+		As mentioned in the System Command Manual for System 3.0 M commands, using M after a call to Y 8, 31: will cause the game to change its current code file. This is not compatible with Sys0Decompiler, which only creates a single ADISK.DAT file. The programmer must account for this.
+
+		The decompiler attempts to find these errors for you, but can only do so if Y 8, 31: is constant (not a calculation or a variable). Other instances may exist.
+	
+	
+	"Label jump or call to address beyond first EOF character in page #. Referenced address: #. Code may exist beyond EOF. Consider enabling Advanced Settings -> Output Junk Code."
+	"Branch end beyond first EOF character in page #. Referenced address: #. Code may exist beyond EOF. Consider enabling Advanced Settings -> Output Junk Code."
+	
+		"Junk Code" may exist in given page. See the Troubleshooting Guide and this manual for additional information.
+	
+
+	"Automatic branch ends should not occur in System 1 code."
+	"Automatic branch ends should not occur in System 2 code."
+	"Manual branch ends should not exist in compiled System 3 code."
+	"Calculation with no operators."
+	"Calculation stack undersized for calc step."
+	"Calculation error, page # final addr #."
+	"DGetAndWriteChar called out of index, scenario address out of scope."
+	"Page number # exceeds expected page count. There may be excess files or errors in the ALD file's header."
+	"EOF character not found in data."
+	"Scenario addr incorrect."
+	"Index to label error: #."
+	
+		The above errors indicate that something has gone fatally wrong during the decompile process. Check any other errors reported by the decompiler first to see if they fix these. If these errors are reported on their own, the likeliest answer is that the compile settings are incorrect, or that game may not yet be supported by Sys0Decompiler.
+		
+		If this error occurs when trying to decompile code that was compiled by Sys0Decompiler, please contact the developer (RottenBlock).
+	
+	
+	"Scenario size for page # is negative. This may indicate an error in the header, but also seems to occur when duplicate files are present across multiple disks. Consider creating a combined Disk file by exporting SCO files using ALD Explorer."
+	"Start sector for page # is 0 or negative. This may indicate an error in the header. Consider creating a combined Disk file by exporting SCO files using ALD Explorer."
+	
+		Consult the Troubleshooting Guide section on "Troubleshooting Issues with Multiple Disk Files."
+		
+		
+	"Unknown text output: "[x]" at AG00 byte index #."
+	"Unknown text output: "[x]" at page # addr #."
+	
+		Unknown character in MSX single byte encoding. Assuming settings are correct and the game does use MSX single-byte encoding, this error may indicate the game is not yet supported. Bear in mind that MSX single-byte support is experimental.
+	
+	

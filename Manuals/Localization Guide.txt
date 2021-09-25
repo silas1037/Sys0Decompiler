@@ -1,0 +1,384 @@
+Localization Guide
+
+This is an outline and tutorial of the process involved in localizing one of Alicesoft's System 1 - 3.0 games using Sys0Decompiler and either system3-sdl2 or SysEng. Sys0Decompiler is a compiler/decompiler program designed to work with System 1-3.0 technology, and system3-sdl2 is its multi-platform game interpreter counterpart, created by kichikuou, based on an original system 32-bit port by Takeda "TODO" Toshiya. SysEng is an fork of system3-sdl2 with additional font support, and any mention of system3-sdl2 also applies to SysEng.
+
+	System Programming Resources: https://alicesoft.fandom.com/wiki/User_blog:RottenBlock/System_Programming_Resources
+	
+	system3-sdl2: https://github.com/kichikuou/system3-sdl2
+
+This guide begins with with simple steps required for an Japanese->English localization, and eventually covers more complicated subjects, such as localizing Japanese into other languages supported by Unicode.
+
+For your first test, you may want to try these steps on a well-documented, such as Little Vampire for Windows 95, so that you get a grasp of the tools without any surprises from obscure games and weird versions. Preferably, pick a game that does not require CD music, as this requires additional steps (see "Playing CD Music" at the end of this guide).
+
+
+
+Step 1 - Prepare Your Tools
+
+If you're reading this, it's assumed that you have a copy of Sys0Decompiler, either in release form or as a code archive being run through Visual Studio. To find the most recent version of Sys0Decompiler, see the System Programming Resources post linked above.
+
+Because Sys0Decompiler is primarily a localization tool, it makes several change to the code during the compile process. As a result, only system3-sdl2 or SysEng can play the resulting program. For system3-sdl2, see the project's Releases Page (for Windows or Android), or compile the program yourself as instructed by the readme. For SysEng, see the System Programming Resources post.
+
+
+
+Step 2 - Confirm Your Version and game_id
+
+I've attempted to document the various games from this era and their playability status at the link below.
+	
+	https://alicesoft.fandom.com/wiki/User_blog:RottenBlock/System_1-3_Games_Playability_Status
+	
+If not available, see the shortlist below, which may be out of date:
+
+	System 1: Little Vampire, Gakuen Senki, Rance 1 (non-DOS and Windows), Policewoman VX, Intruder, Crescent Moon Girl, Dangerous Tengu Legend, D.P.S., Rance 2 (non-Windows), Rance 2 Hint Disk, D.P.S. SG, Toushin Toshi (non-Windows), Toushin Toshi Hint Disk, Alice's Cottage 1.
+	
+	System 2: Rance 3 (non-Windows), Rance 3 Option Set, DALK (non-Windows), DALK Hint Disk, Dr. STOP! (non-Windows), Alice's Cottage 2, Super D.P.S., Prostudent G (Floppy version).
+	
+	System 3.0: Prostudent G (CD version), Ayumi-chan's Story (anime or live-action), Ayumi-chan's Story Hint Disk, Rance 4 (non-Windows), Rance 4 Hint Disk, AmbivalenZ, Space Bandit Fanny Bee, Otome Senki, Toushin Toshi 2 (non-Windows), Toushin Toshi 2 Graphic Disk, Alice's Cottage 3, Gakuen KING, Illusion of a Dream, Rance 4.1, Rance 4.2, D.P.S. All, Only You - The Decadent Juliettes, Toushin Toshi 2 - Soshite sorekara.
+	
+Note that System 2 is not well-supported by these tools, and alternate versions should be used whenever possible. Only some Super DPS sub-titles are function (not the full collection). It is not recommended that you attempt to localize ANY System 2 games at this time.
+
+All later games belong to either System 3.5 or System 4, which are not supported by these tools. For System 3.5, consider sys35c, also by kichikuou, or Sys3Decompiler by SLC. For System 4, use AinDecompiler. Links in the System Programming Resources link, above.
+
+Lastly, make note of your game's game_id on the system3-sdl2 project page. This will be important later. A shortlist is provided below, but may be out-of-date. Be warned: some games (such as Toushin Toshi Hint) may have assigned ID codes, but may still not be fully supported!
+
+	System 1: bunkasai, crescent, dps, dps_sg_fahren, dps_sg_katei, dps_sg_nobunaga, dps_sg2_antique, dps_sg2_ikenai, dps_sg2_akai, dps_sg3_rabbit, dps_sg3_sinkon, dps_sg3_sotsugyou, fukei, intruder, tengu, toushin_hint, little_vampire, yakata.
+	
+	System 2: ayumi_hint, ayumi_proto, dalk_hint, drstop, prog_fd, rance3_hint, sdps_maria, sdps_tono, sdps_kaizoku, yakata2.
+	
+	System 3.0: ambivalenz_fd, ambivalenz_cd, ayumi_cd, ayumi_fd, ayumi_live_256, ayumi_live_full, dps_all, funnybee_cd, funnybee_fd, hashirionna2, mugen, ningyo, onlyyou, onlyyou_demo, otome, prog_cd, prog_omake, rance41, rance42, toushin2_gd, toushin2_sp, yakata3_cd, yakata3_fd.
+
+
+
+Step 3 - Prepare Your Files
+
+It is recommended you use the most recent version of a game for localization purposes whenever possible. For example, the System 3.5 version of DALK is recommended over the System 2 version. This recommendation extends to DPS All, a compilation of all previous DPS games. If you only intend to localize oen sub-game from the DPS All collection, simple programming changes can create a standalone release.
+
+Beyond System versions, try to research whether the game has alternate releases or patches. The Alice's Villa 1989 blog is good at documenting alternate versions:
+
+	https://alicecottage1989.blog.jp/
+
+If necessary, extract your game's files from their disk images first. Windows or DOS versions should not require this step. Most disk images, such as .DSK or .XDF files, can be decompiled using Virtual Floppy Image Convert or other tools. Alicesoft D88 images require N88Splitter, part of the AliceConv toolset by Lutepatious:
+
+	https://github.com/Lutepatious/AliceConv
+
+After storing a backup of the original data, you should search through the files for the game's data files, marked .DAT. Not all games use the same files, depending on their capabilities. These files follow a strict naming convention, and both Sys0Decompiler and system3-sdl2 require files to match this convention (original MSX games are named differently, and must be renamed to match this naming scheme).
+
+The below files begin with a letter of the alphabet, A-Z, usually indicating the disk that carried them in their original release. These include:
+
+	[X]DISK.DAT: Contains source code, always present.
+	[X]CG.DAT: Contains images, almost always present.
+	[X]MUS.DAT: Contains music. 
+	]X]SLEEP.DAT: These contain save data, and the copies included on disks are generally empty (meant to reserve space on the floppy). The original copies can generallybe ignored.
+	
+The following files do not use the A-Z naming scheme:
+	
+	AG00.DAT: Contains object and verb listings, usually present even if not used by the game.
+	GAIJI.DAT: Contains custom text characters. System 3.0 only.
+	
+Various other .DAT files may exist containing external data. For example, older versions of Rance IV contain AMAP.DAT, containing maps. Make sure to gather these as well. As a rule, all original .DAT files should be preserved, with the possible exception of the original SLEEP files.
+
+If you are converting a Windows game, you may wish the keep the original executible, DLLs, etc, for testing purposes. If you are converting a non-Windows game, remaining program files can be deleted.
+
+ALWAYS keep backup versions of the original data files.
+
+You will also need to find a certain .MDA file in the system3-sdl2 resources directory that matches your game of choice. Place the file in the game's base directory. If you have not downloaded a copy of the system3-sdl2 repo (or SysEng's equivalent), download the file here:
+
+	https://github.com/kichikuou/system3-sdl2/tree/master/resources/mda
+
+
+
+Step 4 - Test the Game
+
+We will now attempt to test the original Japanese game using system3-sdl2 or SysEng. Place the executible in the game directory, along with any accompanying DLLs (libfreetype-6.dll, SDL2.DLL, SDL2_ttf.dll, zlib1.dll). If you are experiencing errors, make sure the DLLs are compiled for the same platform (32-bit or 64-bit) - see the Troubleshooting Guide for more details.
+
+As the game is unmodified, system3-sdl2 should detect it and run appropriately (with the sole exception of CD music, which requires extra steps, as previously mentioned).
+
+
+
+Step 5 - Initial Decompile
+
+Use Sys0Decompiler to extract the game's code. Select the Decompile Tab, and fill in the form below. The "Data Directory" should be the directory containing the game's [X]DISK.DAT files and, if available, the AG00.DAT file. Do not overlook any of these files or the decompile will be incomplete. Decompile to a Target Directory, preferably an empty folder. Be warned: if you decompile to the same folder a second time, you will overwrite any changes made in the interim!
+
+For this first decompile, we will use the following settings for the remaining buttons:
+
+	System Version:					Game dependent, as explained in Step 1.
+	Decompile Options:				Decompile All
+	Variable Format:				Full Label Set.
+	Game Encoding:					Shift-JIS.
+	Text Output Encoding: 			Shift-JIS
+	Shift-JIS Source Conversion:	Hiragana/Zankaku
+	
+	The Advanced Settings menu should be left untouched.
+	
+For additional details on these settings, see the Sys0Decompiler manual. If these settings do not seem to work, double-check that you are in the Decompile menu (not the Compile menu) and that the System Version, Game Encoding and Text Output Encoding. If that fails, consider the Sys0Decompiler Troubleshooting Guide.
+	
+Once successful, the decompiler will create several files called "pages" with the .ADV file extention. This is the game's source code. If your game included an AG00.DAT file, you will also get two files called !objects.adv and !verbs.adv. These are also parts of the game's code and should be kept together.
+
+It is recommended you then duplicate your first decompile to a seperate directory marked "original," kept aside for later reference.
+
+Depending on your choice of text editor, you may have trouble reading Shift-JIS text. Some editors, such as Notepad++, may automatically detect Shift-JIS, or might fail to detect it depending on the number of Shift-JIS characters in the file. The solution for this will depend on your editor, so check online for full details.
+
+	Step 5a - Understanding Gaiji
+	
+	If your game incldues a GAIJI.DAT file, then it includes special characters called "gaiji." Gaiji were any externally-defined character not part of the Shift-JIS standard. For example, the Rance 4.1 and 4.2 Save and Load screen use a custom glyph that reads "File No." Even the numbers used for the save file's date and time were gaiji! 
+	
+	Unfortunately, gaiji do not exist in the modern Shift-JIS standard. This means that, if the code were decompiled directly, your editor would overwrite the gaiji with other text. As a result, gaiji characters are output to the code file in the form "G+####," where #### represents the two-byte code for the gaiji in the game's original encoding.
+	
+	For example, this string might contain a gaiji image of a circle as a single character in the middle of the string:
+	
+		'Here is a circle: G+1234.'
+
+	Gaiji codes should be left untouched if at all possible. There is currently no way to extract or modify gaiji from GAIJI.DAT.
+	
+	Note that the current font file does not affect the appearance of gaiji, but the current font size will.
+
+
+
+Step 6 - Initial Compile
+
+Next, prepare the program to re-compile the code without making any changes, to make everything is running correctly. Make sure you have made secure backups of your game files, as following this guide will overwrite the original DISK and AG00 files!
+
+Click the Compile tab, and press the "Copy/Reverse Decompile Settings" button to carry over your settings from the Decompile tab. The Source Directory should be the file containing your decompiled code, the Target Directory the game folder, and the System Version should match. The Compile Options section should read Compile All, and the Text Source Encoding section should read Shift-JIS. 
+
+The only setting that won't have carried over is Game Output Encoding. Set Game Output Encoding to Shift-JIS, if it isn't already. 
+
+Press Compile. You may see a number of warnings involving unsupported Y commands, but this is normal: as long as you don't run into any fatal errors, the game should compile normally. This replacees the ADISK.DAT file.
+
+At this stage, remove all subsequent [X]DISK.DAT files, B-Z, as Sys0Decompiler always compiles to a single ADISK.DAT file, and the leftover files are useless and may even cause errors. Only do this to B-ZDISK files: other .DAT files, such as BCG.DAT, are still required.
+
+Once compiled, your code is converted to "new style" and can only be run by system3-sdl2 and SysEng. You can delete the original Alicesoft executible at this point. system3-sdl2 will also no longer recognize the compiled code. Create a new, plain text file named "system3.ini" in the same directory as the system3-sdl2 executible and include the following text:
+
+	[config]
+	game = [game_id] 
+	
+Where "[game_id]" is the ID we looked up in Step 1.
+
+Test the program again in system3-sdl2. It should work just like before.
+
+Sys0Decompiler will automatically save when it closes, but consider using File > Export Settings to save the settings for each individual project. You can load those settings later using File > Import Settings.
+
+
+
+Step 7 - The system3.ini File, and Command Line Arguments
+
+During the previous step, we created the system3.ini file. In this step, we'll look at some of its other options to see how they can be used as part of a localization. 
+
+See the system3-sdl2 readme for more details. SysEng supports additional configuration options. See its manual as well.
+
+	[CONFIG]
+
+	game: Used to override the CRC32 check that determines which game is being played. This is REQUIRED if the game has been modified from the Alicesoft original.
+		
+	playlist: Specifies the file path of a text file that defines a list of CD audio tracks. See "Playing CD Music" for more details.
+	
+	encoding: This setting must be changed to localize a project that requires UTF-8. See "Localizing in UTF-8" for more details.
+	
+	title: Changes the title that appears in the top bar of the application.
+	
+	fontfile: Specifies the path for the game's font. This file must be a monospace font. By default, the executible will use MTLc3m.ttf (MotoyaLCedar).
+	
+	[STRING]
+	
+	back: Use this to provide a localization for the "Back" option that appears automatically on a menu with multiple pages.
+	
+	next_page: Use this to provide a localization for the "Next Page" option that appears automatically on a menu with multiple pages.
+	
+	DPS Options: The games DPS, DPS SG, and DPS SG Set 3 contain hard-coded character name strings that can be changed via the settings. Make sure to adjust these options if localizing one of those games!
+
+	
+	
+Step 8 - Hankaku Characters, Account for Zankaku
+
+system3-sdl2 can show Japanese characters in zankaku (full-width) and hankaku (half-width) versions of Latin characters. By default, it will use the former, which tends to look oversized and unweildy to English readers. For this reason, Latin characters are changed to their hankaku/ASCII variants during decompilation, regardless of your settings. 
+
+After compilation, the game's settings take priority, and will generally display Latin characters in zankaku. You'll want to change them to hankaku by including the command Y 240, 1: in the game's code. Y 240, 0: switches back to zankaku. To help in localization, system3-sdl2 supports the Y 240 command even in Alicesoft's earliest games, which didn't originally support it.
+
+Typically, it's possible to set only a single copy of this command early in the code, but you'll want to be careful. Search the code for pre-exiting Y 240 commands: you may want to erase these, or to switch back after they've done whatever they're doing. Some Y 240 commands use hankaku/zankaku for layout or appearance, while others may be completely irrelevant in a localized version. Y 240 also switches between katakana (when using zankaku) and hiragana (when using hankaku), which is also (usually) irrelevant once the game is localized.
+
+Be careful if you are using alternate fonts. Many fonts do not include full-width characters, so errors or invisible characters may occur if you do not make the switch.
+
+
+
+Step 9 - Image Localization
+
+Images containing text must be extracted and modified using image modification programs. To extract them, use the program ALDExplorer2, which must also be used to replace the original files once the editing is complete.
+
+Note that ALDExplorer2 does not currently support certain older image formats, especially the older version of VSP images used in System 1 and 2 games, which is another reason to prioritize game remakes over these originals. VSP images used in System 3 and later System 3.5 should work fine, and some System 2 examples may also work. AliceConv by Lutepatious (linked above) includes some tools that may help extract and convert older image formats.
+
+If necessary, these images could be recreated from screenshots and then overwritten with a modern form, but this is not recommended unless absolutely necessary.
+
+		
+
+Step 10 - Full Text Localization
+
+At this stage, the game can be localized through direct editing of the code's page[x].adv files, and of the !objects.adv and !verbs.adv files. While System 1-3.0 code can be incredibly opaque, the text localizer typically only needs to deal with text encloded in single quotes ('), and can ignore the rest. A Find command across files can locate every instance of single quotes, and since the original Japanese text rarely if ever uses any, this search should be definitive.
+
+Remember that the code must be recompiled after every change to the files before you'll see it in-game!
+
+Some of System's commands are described in below as an introduction, with a focus on commands with special meaning for a localization team. For full details, see the System 1-3.0 Command Manual included with Sys0Decompiler.
+
+
+Single Quotes
+
+	Quote marks at the start of a line (the decompiler uses single quotes, but double quotes are also valid) indicate text that outputs to the current "message box," which is typically the box at the bottom of the window. 
+	
+	System does not include automatic line-breaks, so the localizer will have to insert those manually (below). The localizer should test the width of the messsage box by filling an early-game message with a temporary string of characters to see how many end up fitting inside the box with your choice of font. If using variable-width fonts in SysEng, consider using the letter 'W' for this test, as it is typically the widest character in a font.
+	
+	Because single quotes define the message, you cannot use single quotes inside of the message box without extra steps. To do this, put an escape character, \, in front of the quote mark.
+	
+		'Rance\'s sword.'
+		
+	
+R and A Commands
+
+	The R command inserts a line break, and the A command ends the current "screen" of messages and will wait for user input, at which point it will proceed to the next screen. Note that, even though most System commands end with a colon (:), R and A do not, and adding one will cause errors. If enough R commands are entered to move beyond the current screen of text, the overflow will be treated in the same fashion as an A command.
+	
+	
+Y 1 Command
+
+	Y 1, 0: clears the current message box manually in nearly all System games.
+	
+	
+B Commands and Y 7
+
+	These commands move and reshape the message and menu boxes, a complicated subject. See the manual for full details. 
+	
+	As a gloss, the B 3 command defines the bounds of the message box, including the pixel coordinate of the top left and bottom right corners, which may need to be modified for your localization. The B 1 command does the same with the menu. Y 7 is used to draw squares on the screen based on B 3, and is often used to create pop-up message boxes.
+
+
+M and X Commands
+	
+	M commands store text for later. They are followed by a string of characters in single quotes, then a colon. Example:
+
+		M 'Text':
+		
+	Text stored by M commands are later used via the X command. See the manual for more details of both.
+
+
+H Commands
+
+	The H command outputs numeric variables directly to the current message box. The number that immediately follows the H indicates certain formatting properties, see the manual for more details.
+	
+	
+Conditions
+
+	{ commands mark a branch in the code. They are followed by a special condition that must be met to follow the branch. For example, say the code branches if a certain door is locked. The status of the lock is stored in VAR0100, and if it is locked, VAR0100 will equal 0. The condition may read:
+	
+	{ VAR0100 = 0:
+	
+	If the condition is not met, the game will skip ahead until it finds the command }. The lines inside a condition block are indented for easy reading. Here is another example:
+	
+	'This is a door. '
+	{ VAR0100 = 0:
+		'It\'s locked. '
+	}
+	'It\'s made of wood.'
+	
+	If the door is unlocked, the player will see: "This is a door. It's made of wood." If it is locked, they will see, "This is a door. It's locked. It's made of wood."
+
+	
+$ Commands
+
+	$ commands add a menu item to the current menu, and are the most commonly used method of creating menus in System 1-3.0 games.
+	
+	$ commands are unusual in that it can take multiple lines of code to define a single menu item. The first line of a menu indicates where the menu will go in the code. The lines the follow define the text that goes into the menu, followed by another $ that finalizes the menu. Typically this is simple, and appears as follows:
+
+		$ lblLabel $
+		'Text'
+		$
+
+	More complicated menus may also appear, with multiple lines of code between the $ commands. All the localizer typically needs to know is that the text inside the quotes must be localized.
+
+	Menu space is typically more limited than other text. You may wish to test the width of the menu in the same way that you did the message box.
+
+
+Objects and Verbs, [ and : Commands
+
+	Early System games were built around a collection of verbs and objects that would be used to create the games menus (via [ and : commands). For example, you might use the verb "Look" to examine an object, a "Treasure Chest." The text for these verbs and objects can be found in the file !objects.adv and !verbs.adv, with each object and verb appearing on its own line. These files should also be localized and compiled along with the page files.
+	
+	Say that "Look" is Verb #5 (found on line #5 of !verbs.adv) and "Treasure Chest" is Object #20 (found on line #20 of !objects.adv). The code related to this command is stored under label lblLabel. The line would be formatted as follows:
+	
+		[ lblLabel, 5, 20:
+		
+	: commands are similar to [ commands, but have a special condition first. Say the chest is hidden from view until VAR0100 is equal to 1. Until the player fulfils that condition, they cannot Look at the Treasure Chest. The line would instead read:
+	
+		: VAR0100 = 1, lblLabel, 5, 20:
+	
+
+No Comments Support
+
+	Unfortunately, System 1-3 games do not support comments (lines of code that are not compiled, allowing you to write notes in the code file, among other things).  Unfortunately, you will have to keep any comments in a seperate file.
+	
+	
+
+Step 11 - Prepping for Distribution
+
+After extensive localization and testing, you should compile the release version of your game's data files. Bundle these files with a Release version of system3-sdl or SysEng, as appropriate. Don't forget the system3.ini file!
+
+Please add credit to your readme acknowledging system3-sdl2 and Sys0Decompiler, with links if possible. Spreading the word about these programs may help other Alicesoft retro localizations come to life!
+
+Good luck!
+
+
+
+Other Topics
+
+Playing CD Music:
+
+	To get your game to play CD music, use the playlist argument in system3.ini. The playlist argument takes a file path to a plain-text document containing a directory of CD audio tracks. system3-sdl2 will then load the tracks and play them as though they were coming from the original CD.
+
+	The lines are converted 1-to-1 to the equivalent track in-game, so the first line is track 1, the second track 2, etc. Note that the first line is generally not used, because track 1 of game CD is usually a data track. Comment out this line using the # character. Example:
+	
+		# This line is ignored
+		BGM/track02.mp3
+		BGM/track03.mp3
+		...
+			
+			
+
+Localizing to UTF-8
+
+As of system3-sdl2 version 0.7.0 and Sys0Decompiler 0.8, it is possible to localize games to UTF-8, supporting most major languages to at least some degree. Follow the following steps.
+
+
+Step 1 - Decompiling
+
+Alicesoft games are all compiled under Shift-JIS, so make sure that your original decompile sets Game Encoding to Shift-JIS. But to create Unicode-compatible code files for you to work with, set Text Output Encoding to UTF-8.
+
+
+Step 2 - system3.ini
+
+When preparing your system3.ini file, make sure to include a line reading:
+
+	encoding = UTF-8
+	
+or
+
+	encoding = UTF8
+	
+If you attempt to run the game at this point, it should work like it did under Shift-JIS.
+
+Next, consider modifying your font to something that can display characters from your language of choice, using the "fontfile" option. This may change the appearance of unlocalized text (maybe even making Japanese text invisible!) but will be required in the long run.
+
+
+Step 3 - Compiling
+
+Since your code files are UTF-8, set Text Source Encoding to UTF-8. Game Output Encoding will automatically be set to UTF-8, as UTF source files cannot be compiled to anything else.
+
+If you later find yourself needing to decompile your game again, make sure to set the Decompile tab's Game Encoding to UTF-8.
+
+
+Step 4 - Create a Simple Test
+
+At this stage, try creating an easy test example using the language of your choice. For example, modify the game's title screen to include a test message. Compile and see how the text displays.
+
+
+Step 5 - If the text isn't satisfactory...
+
+	- First off, consider trying other fonts that support your language of choice.
+	- SysEng supports English variable-width fonts and multiple fonts, which might work better in your language.
+	- If all else fails, consider contacting the developers at either the system3-sdl2 Issues page or (for SysEng issues) RottenBlock's Alicesoft Wiki Message Wall. Remember that UTF-8 support is still new and that each new language may require additional programming support!
+	
+	
+Please note that UTF-8 dramatically increases the size of source files. Unfortunately, compiled source files have a max size of ~64kb, which may lead to problems. Unfortunately, this is a built-in limitation of the .DAT archive format. Generally this is not a problem, but if it becomes a problem, can be quite a hassle to circumvent. As a result, it is not recommended to use UTF-8 unless it is required for your language of choice. 
+
+See the Troubleshooting Guide for this and other Unicode-specific situations.

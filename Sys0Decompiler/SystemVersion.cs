@@ -431,7 +431,19 @@ namespace Sys0Decompiler
 				labelMap.Add(strLabel, new LabelInfo(labelMap.Count));
 			}
 			labelMap[strLabel].HasAssignedAddress = true;
-			labelMap[strLabel].DestinationAddress = Convert.ToUInt16(outputStream.Position);// curAddress;
+
+			try
+			{
+				labelMap[strLabel].DestinationAddress = Convert.ToUInt16(outputStream.Position);
+			}
+			catch(OverflowException oe)
+			{
+				RaiseError("Address overflow error: page " + curPage + " exceeded max size ("
+					+ PAGE_MAX + " bytes) while declaring a label, causing an error on line "
+					+ curLineNum + ". Compilation must stop.");
+				fatalError = true;
+				return;
+			}
 
 			//Console.Write(curAddress.ToString(), outputStream.Position);
 
@@ -474,7 +486,20 @@ namespace Sys0Decompiler
 
 			long curPosition = outputStream.Position;
 			outputStream.Position = branchStarts.Pop();
-			WriteWord(Convert.ToUInt16(curPosition));
+
+			try
+			{
+				WriteWord(Convert.ToUInt16(curPosition));
+			}
+			catch(OverflowException oe)
+			{
+				RaiseError("Address overflow error: page " + curPage + " exceeded max size ("
+					+ PAGE_MAX + " bytes) while declaring a branch end, causing an error on line "
+					+ curLineNum + ". Compilation must stop.");
+				fatalError = true;
+				return;
+			}
+
 			outputStream.Position = curPosition;
 		}
 
@@ -643,7 +668,19 @@ namespace Sys0Decompiler
 		{
 			long curAddr = outputStream.Position;
 			outputStream.Seek(0, SeekOrigin.Begin);
-			WriteWord(Convert.ToUInt16(curAddr-1));
+
+			try
+			{
+				WriteWord(Convert.ToUInt16(curAddr - 1));
+			}
+			catch(OverflowException oe)
+			{
+				RaiseError("Address overflow error: page " + curPage + " exceeded max size ("
+					+ PAGE_MAX + " bytes) while declaring a menu, causing an error on line " 
+					+ curLineNum + ". Compilation must stop.");
+				fatalError = true;
+				return;
+			}
 			outputStream.Seek(curAddr, SeekOrigin.Begin);
 
 			foundFirstMenu = true;
@@ -689,8 +726,13 @@ namespace Sys0Decompiler
 			//curAddress = 0;
 			labelMap.Clear();
 
+			fatalError = false;
+
 			foreach(string line in lines)
 			{
+				if(fatalError)
+					break;
+
 				curLineNum++;
 				curColumn = 0;
 				curLine = "";
@@ -788,11 +830,11 @@ namespace Sys0Decompiler
 						break;
 					case '[':
 						if(!foundFirstMenu) WriteFirstMenu();
-						compile_cmd_set_verbobj();
+						if(!fatalError) compile_cmd_set_verbobj();
 						break;
 					case ':':
 						if(!foundFirstMenu) WriteFirstMenu();
-						compile_cmd_set_verbobj2();
+						if(!fatalError) compile_cmd_set_verbobj2();
 						break;
 					case ']':
 						// Do nothing more.
@@ -906,6 +948,9 @@ namespace Sys0Decompiler
 
 			// If WriteFirstMenu has never been called, fill the first two bytes with the location of the 
 			// EOF character.
+			//
+			// Because we check outputStream.Length just above, there's no need to do it for the
+			// ToUInt16 here.
 			if(!foundFirstMenu)
 			{
 				outputStream.Seek(0, SeekOrigin.Begin);
@@ -996,7 +1041,7 @@ namespace Sys0Decompiler
 					return index;
 				}
 				catch(FormatException e) {
-					RaiseError("Error, invalid arguement in VAR varable number" + label.Substring(3) +
+					RaiseError("Error, invalid argument in VAR variable number " + label.Substring(3) +
 						".", e);
 					return -1;
 				}
@@ -1415,7 +1460,7 @@ namespace Sys0Decompiler
 		{
 			if(CPeekChar() != mark)
 			{
-				RaiseError("Warning: Function call does not end with correct closing mark: " + mark);
+				RaiseError("Warning: Command call does not end with correct closing mark: " + mark);
 			}
 			// This is just a nag, proceed whether we have the colon or not.
 			curColumn++;
@@ -1595,6 +1640,7 @@ namespace Sys0Decompiler
 		protected void DGetAndWriteMessage(byte terminator)
 		{
 			List<byte> byteStream = new List<byte>();
+			bool escapeNext = false;
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 			{
@@ -1603,7 +1649,7 @@ namespace Sys0Decompiler
 
 			while(true)
 			{
-				// A terminator of ' ' indicates that we are looking at an old-style message with no explicit
+				// A terminator of 0 indicates that we are looking at an old-style message with no explicit
 				// terminator. Instead, we have to check if the next character (without loading it) is either
 				// a space or a valid message character, as indicated by c & 0x80.
 				byte c = scenarioData[scenarioAddress];
@@ -1612,7 +1658,8 @@ namespace Sys0Decompiler
 
 				c = DGetByte();
 
-				if(terminator != 0 && c == terminator) break;
+				if(terminator != 0 && c == terminator && !escapeNext)
+					break;
 
 				if(parent.CurDecompileSourceMode == DecompilerForm.SourceEncodingMode.ShiftJIS)
 				{
@@ -1735,12 +1782,16 @@ namespace Sys0Decompiler
 							break;
 					}
 				}
+
+				if(escapeNext) escapeNext = false;
+				else if(c == '\\') 
+					escapeNext = true;
 			}
 
 			// Debug 
-			/* byte[] restmp = Encoding.Convert(parent.DecompileSourceEncoding, parent.DecompileOutputEncoding,
+			byte[] restmp = Encoding.Convert(parent.DecompileSourceEncoding, parent.DecompileOutputEncoding,
 				byteStream.ToArray());
-			string resString = parent.DecompileOutputEncoding.GetString(restmp);*/
+			string resString = parent.DecompileOutputEncoding.GetString(restmp);
 
 			if(decompileMode == DecompileModeType.ProcessCode)
 			{
@@ -2162,7 +2213,7 @@ namespace Sys0Decompiler
 
 			if(scenarioSize < 0)
 			{
-				RaiseError("Scenario Size for page " + pageNum + " is negative. This may indicate an error in " +
+				RaiseError("Scenario size for page " + pageNum + " is negative. This may indicate an error in " +
 					"the header, but also seems to occur when duplicate files are present across multiple disks. " +
 					"Consider creating a combined Disk file by exporting SCO files using ALD Explorer.");
 
@@ -2170,7 +2221,7 @@ namespace Sys0Decompiler
 			}
 			if(startSector <= 0)
 			{
-				RaiseError("Start Sector for page " + pageNum + " is 0 or negative. This may indicate an error " +
+				RaiseError("Start sector for page " + pageNum + " is 0 or negative. This may indicate an error " +
 					"in the header. Consider creating a combined Disk file by exporting SCO files using ALD " +
 					"Explorer.");
 			}
@@ -2274,16 +2325,16 @@ namespace Sys0Decompiler
 						if(labelAddress > firstEOF)
 						{
 							RaiseError("Label jump or call to address beyond first EOF character in page " + pageNum +
-								". Referenced address: " + labelAddress + ". Code may exist beyond EOF. Consider enabling" +
-								"Advanced Settings -> Output Junk Code.");
+								". Referenced address: " + labelAddress + ". Code may exist beyond EOF. Consider " +
+								"enabling Advanced Settings -> Output Junk Code.");
 						}
 					}
 					foreach(int branchEndAddress in branchEndAddresses)
 					{
 						if(branchEndAddress > firstEOF)
 						{
-							RaiseError("Branch end beyond first EOF character in page " + pageNum + ".Referenced " +
-								"address: " + branchEndAddress + ". Code may exist beyond EOF. Consider enabling" +
+							RaiseError("Branch end beyond first EOF character in page " + pageNum + ". Referenced " +
+								"address: " + branchEndAddress + ". Code may exist beyond EOF. Consider enabling " +
 								"Advanced Settings -> Output Junk Code.");
 						}
 					}
@@ -2325,7 +2376,8 @@ namespace Sys0Decompiler
 					warningText = warningText.Substring(0, warningText.Length - 2);
 
 					warningText += ") found in page " + pageNum + ". These commands are not yet supported by " +
-						"SysEng. Modification of the SysEnd source may be required to run this particular game.";
+						"system3-sdl2 or SysEng. Modification of the system3-sdl2 source may be required to run " +
+						"this particular game.";
 
 					RaiseWarning(warningText);
 				}

@@ -1,0 +1,693 @@
+System 1-3.0 Command Manual
+
+This manual attempts to detail the specifics of System 1-3.0 commands. For more information on the tools used in system programming, see the associated readmes and manuals, as well as the Localization and Troubleshooting Guides. This guide is far more technical and assumes some programming knowledge on the part of the reader.
+
+The term "TTSys" is here used to refer to Takeda Toshiya's original 32-bit implementations of the System implementor, used as the basis for system3-sdl2 and SysEng.
+
+
+Basics
+
+Once decompiled, code is placed in "page" files, which run from page0000.adv to the end of the archive. Custom file names are not allowed, nor are gaps in the page numbering. If a gap occurs in the page numbering, the compiler will assume it has reached the end of the code.
+
+Page files are made up of single-character ASCII commands followed by parameters, one command per line. For example:
+
+	H 0, 1:
+	
+will run command H with parameters 0 and 1, as detailed below in the command directory below.
+
+Y and Z commands are "extend" commands, where the first parameter indicates an entirely sub-function, with the second parameter used in a traditional fashion. For notation purposes, each extend command is referred to with both letter and number. For example, "Y 1" is used to clear the message box, but "Y 4" produces random numbers based on the second parameter.
+
+To distinguish ASCII commands from ASCII text meant for output, Sys0Decompiler insists that text-for-output be put inside a set of single quotes or double quotes (favoring the former). This is in line with later versions of System. Keep in mind that any ASCII text found outside of quotes will be treated as commands rather than outright errors, which may lead to misleading error warnings.
+
+Text-for-output is sent immediately to the current "message box" when it is reached in code. For example: 
+
+	Y 240, 1:
+	'Hello World'
+	A
+	
+The text "Hello World" will be output immediately after the "Y 240" command and immediately before the "A" command. 
+
+Generally, commands are followed by parameters and "closed" by the colon character, but commands without parameters (like the A command, above) forgo the colon, and errors may occur if it is included. Commands with this exception are detailed in the directory below.
+
+
+Verbs and Objects
+
+Some System 1-3.0 games rely heavily on a specific program flow based on menus created by pairing "verbs" with "objects," while others sidestep this system entirely by creating menus using the $ command. If your game contains an AG00.DAT data file, it should involve at least some use of verbs and objects, though there are a few rare cases where the file is unused, and seems to have been included out of some sort of engine limitation, sometimes including verbs and objects from an entirely different game!
+
+When a game makes use of a verb-object menu, the game's menu will display a list of all given verbs. After the player selects a verb, they are presented by a list of assigned objects. So the verb "Punch" might be followed by "Goon," "Punching Bag," or "Self."  You can cause the game to give focus to the active menu using the ] command. By default, the game will use the first batch of verb-object commands in a code file as the default menu. These lines must be continuous to be considered part of the same menu. Multiple verb-object menus in the same file are rare, but not technically impossible.
+
+The code refers to verbs and objects by ID number, with the actual strings stored in AG00.DAT. Sys0Decompiler outputs verbs to !verbs.adv and objects to !objects.adv. For added readibility, Sys0Decompiler outputs verb and object IDs with 1-oriented indexing instead of 0-oriented (as internal) so that the programmer can directly compare the line numbers in the !verbs/objects.adv file. So verb 3 can be found on line 3 in !verbs.adv, object 22 on line 22 of !objects.adv, etc.
+
+Object 1 is special, and indicates the verb is used on its own, with no sub-menu. Because object 1 is used for standalone verbs and is never seen, it usually (always?) has a filler value in !objects.adv, like "*".
+
+
+Variables (Numeric)
+
+System 1-3 do not support custom variables names. Standard variables in System 1-3 are all unsigned shorts (0-65535) and are indicated in one of two ways. The most common format uses the prefix "VAR" and a four-digit number (VAR0000-9999), but the first 59 variables (VAR0000-VAR0058) also appear with alternate, hardcoded names, listed below:
+
+	VAR0000			: RND
+	VAR0001-VAR0020 : D01-D20
+	VAR0021-VAR0040 : U01-U20
+	VAR0041-VAR0056 : B01-B16
+	VAR0057			: M_X
+	VAR0058			: M_Y
+	
+These names sometimes indicate how the variables are used: RND is so named because it is the output for the number randomizer function (Y 4) among many others. M_X and M_Y indicate the mouse position during System 3.0 input functions. A block of variables might be used to contain similar information: for example, Little Vampire tracks the items you've collected mostly with the D and U variables.
+
+Sys0Decompiler favors the hardcoded variable names when decompiling, and they are referred as such in documentation. If you prefer, these hardcoded names can be diabled using the "Variable Format -> "VAR" Labels" option during decompilation. Be aware that the compiler will treat a hardcoded variable label and its equivalent VAR label as identical during compilation (i.e. a change to VAR0000 is also a change to RND, as they are the same variable).
+
+Again, all variables are numeric. Starting in System 2 and continuing to System 3.0, numeric variables can be output to the message box via the H command, but in System 1 there is no way to directly output variables. You could instead create a state machine to test the values of variables, or other methods.
+
+Some advice for variables:
+
+	- RND, aka VAR0000, is hardly restricted to random numbers. It is used as the return target for many built-in commands and should be considered extremely volatile. 
+	
+	- When creating variables for custom purposes, like a localization or patch, it is best to start with VAR0999 and work backwards. Besides ensuring that the variable slot is unused (Alicesoft games rarely go beyond the 200s), it serves as a handy indication to future programmers that the change was added in a fan-patch and is not part of the code's original structure.
+
+
+Text Variables (tvars)
+
+In addition to the above variables, System 1-3.0 also stores ten string variables (of no more than 22 chars each), referred to by ID number and accessed using various commands.  The M command can be used to output the current tvar_index, typically set by command Y 8.
+
+System 1's handling of string variables is unusual: the programmer cannot modify the variables in any way. The only System 1 game to even use string variables is D.P.S., which hard-codes a set of text variables during initialization. Using system3-sdl2, the localizer can set these variables using the [STRING] section of the system3.ini file.
+
+
+Labels
+
+System 1-3.0 (and for that matter, System 3.5) rely heavily on labels for control flow. Unlike System 3.5, these labels must be in the format "lbl" followed by a hex numeral. While a programmer can create a label using any numeral they wish, it will be lost during compilation. To ensure its labels are unique, the decompiler assigns labels the value of their hex address, which causes them to change easily.
+
+Labels are declared using the * command, e.g.:
+
+	*lblExample:
+    *lbla2cf:
+	
+Various label-related commands can then be used to jump the playhead to the label declaration (*). For example,
+
+	*basicLoop:
+	'RANCE RULZ'
+	@basicLoop:
+	
+creates an infinite loop.
+
+System 1-3.0 are unable to jump directly to labels in other files. A common code structure is to set a certain variable, jump (&) or call (%) to the top of a new file, and then point the code in a given direction based on the variable (this file is usually dubbed GAMESUB.adv or SYSSUB.adv in 3.5, but Sys1-3.0 can't use unique file names). These are referred to as "subcalls."
+
+
+Mathematics
+
+System supports the below mathematical operators in the following order of operations:
+
+	Operator	   Symbol	Notes
+	Parentheses		( )		
+	Division		 /		System 2 and 3.0 only
+	Multiplication	 *		
+	Addition		 +		
+	Subtraction		 -		
+	Greater than	 >		">=" is not supported
+	Less than		 <		"<=" is not supported
+	Equality		 =		Not "=="
+	Inequality		 \		Not "!="
+	
+No version of System supports exponents, modulus, or bitwise math, but you can recreate some of these via subcalls.
+
+When dealing with large numbers and subtraction, always remember that System's variables are unsigned shorts (0-65535), and values outside of that range will cause errors. Division in System 2 and 3.0 always rounds up.
+
+System does not have dedicated and/or (&& or ||) operators. Instead, you must treat the comparisons as math. Multiplication substitutes perfectly for "and" since any false (0) will reduce the equation to 0. Alicesoft programmers use "+" to substitute for "or" in most situations, but you must be careful with it, as there are exceptions where it does not function as a true "or" (Also: be careful not to fall into the semantic trap where "+" can be read as the word "and" in English!).
+
+Because System processes comparisons at the end of the order of operations (i.e. AFTER * and + we're using as "and" and "or"), you MUST put each side of a comparison into parentheses. In other words:
+
+    (VAR0000 = 1) + (VAR0001 = 1)
+
+is valid, but 
+
+    VAR0000 = 1 + VAR0001 = 1
+
+will throw an error due to the order of operations. Sys0Decompiler will only produce equations in the above format.
+
+
+Character Width
+
+TTSys and SysEng default to outputting text in zankaku "full-width" characters, which produces chunky, often unappealing Latin text. Hankaku, "half-width" characters are preferred for localized text. For this reason, the Y 240 command has been back-ported to System 1 and 2 from System 3.0. Add the following line of code early in the game, even as the very first line of code:
+
+	Y 240, 1:
+	
+This sometimes only needs to be done once, but if the game uses Y 240, you may have to take additional steps. If zankaku mode is required for certain parts of the game to maintain layout or aesthetics, use 
+
+	Y 240, 0:
+	
+to revert back to zankaku, and then use Y 240, 1: when you are done.
+
+Setting the game to hankaku will cause it to output katakana instead of hiragana, and the reverse for zankaku, but once the game is localized to a non-Japanese language, this will not be a factor. Sys0Decompiler can output either character set during decompile.
+
+
+Miscellaneous
+
+	- system3-sdl2 and SysEng account for game-specific hardcoded "openings" that exist exclusively in System 1. Hardcoded openings exist for Little Vampire, Intruder, and Crescent Moon Girl. These openings do not exist in the decompiled code. It's important to be aware of this "hidden code" when localizing, though it should not be necessary to localize it directly. If necessary, the code can be found in system3-sdl2's source code, nact_sys1.cpp::openings(). 
+
+	- While Sys0Decompiler is able to decompile most System games, some games feature commands that are not yet supported by system3-sdl2 or SysEng, and so will not function in-game. If these commands are encountered in a decompiler, Sys0Decompiler will attempt to warn the user. These are especially common on System 2 games. 
+	
+		Not all unsupported commands are damaging: some are harmless or only mild. Only experimentation will prove this one way or another. In some rare cases, an unsupported command has been confirmed as unnecessary (such as Y 5, an image preloading function). If the command has been confirmed as unnecessary, Sys0Decompiler will not give a warning.
+
+
+
+Command Directories
+
+Below is a list of all commands for the three versions of System supported by these tools. Unless otherwise specified, parameters can be variables or calculations, but some parameters can only be numerical constants. These are specified in the description.
+
+Note that no version of System uses the entire alphabet: any gaps in the list indicate that a command has no function in that version of System. Unsupported commands are listed again at the end of the section.
+
+Because System 3.5 is more commonly used and better-documented, comparisons may be made to System 3.5 commands. Compare to the System 3.5 manual, available at the System Programming Resoureces page (https://alicesoft.fandom.com/wiki/User_blog:RottenBlock/System_Programming_Resources) or elsewhere.
+
+
+System 1 Command Directory
+
+	! - !VARXXXX:val! - cmd_calc. Variable assignment. Variable name goes on the left of the colon, and a value, variable or calculation on the right.  Other formats allowed by System 3.5 do not yet exist.
+	
+	{ - { condition: - cmd_branch. Basically an "if" statement, but with no "else" support, a serious limitation. Seems identical to the implementation in 3.5 otherwise.
+	
+	} - Ends a conditional branch.
+
+	* - *lbl: - label declaration. Marks a label for use with @ and \ commands. Labels must be constant. 
+	
+		If examining compiled source (SCO files) with a hex editor, note that * commands do not have a compiled code presence: they are dynamically generated based on @ and \ commands.
+	
+	@ - @lbl: - label_jump. Moves the playhead to the declaration of the given label (*). Labels must be constant.
+	
+	\ - \lbl: - label_call. Moves the playhead to the declaration of the given label, but retains the position of this line in memory. You can return to it via "\0:". The game places previous positions in a stack, so after returning to the most recent \ call, you can return to the one before that, and so on. If \0: is called when the call stack is empty, it will have no effect. Labels must be constant, and no other numerical values are permitted besides 0.
+	
+	& - &num: - page_jump. Jumps to the top of the given page file, so "&1:" moves to the top of page0001.adv.
+	
+	% - %num: - page_call. As with page_jump, but retains the position of this line in memory, allowing the programmer to return there via %0:. A side effect of this is that it is impossible to page_call to page 0. Some games seem to be aware of this and do as little as possible in page 0, but this is hardly universal. If %0: is called when the page call stack is empty, it will have no effect.
+	
+	$ - Used to set a non-standard menu (one that doesn't rely on verbs and objects) one entry at a time. Basically, you want to put a bunch of these in a continuous block to create a full menu. The format is $label$, followed by lines of code defining the menu item's text, then another line with a standalone $. The most common use case would be:
+
+                $ lbl4000 $
+                'Menu Item'
+                $
+				$ lbl5000 $
+				'Menu Item 2'
+				$
+
+        The code is happy to accept any number of lines between the opening "$ label $" declaration and the ending $. Any command that produces message text, such as H or M commands, can also be used to define a menu in this fashion. For example, the below example produces a menu item labelled "Menu Item 3":
+		
+				!VAR0100:3!
+				$ lbl6000 $
+				'Menu Item '
+				X VAR0100:
+				$
+	
+	[ - [label, verbId, objID: - set_verbobj. Sets a verb-object pair to appear in the default menu. Make sure these commands (and any : commands, below) are placed next to one another in the code to make them part of the same menu. All parameters must be constant.
+	
+	: - :condition, label, verbId, objID: - set_verbobj2, same as the above, but with a condition in front of the three variables. If the condition is not fulfilled, this menu item will not appear. Other than the condition, params must be constant.
+	
+	] - open_menu. Jump to the currently selected menu, either the default (the first verb-obj menu set in the file) or the one recently created by $ commands. If no verb-obj menu exists, and there is no menu set by $ commands, the ] command will jump to the end of the file and immediately exit the game.
+	
+	A - A - End the text box and wait for user input. After the next input, start a new message box. Does not use a closing colon.
+	
+	F - F - Jumps back to the start of the current file. Does not use a closing colon.
+	
+	G - G idNum: - Loads and displays a CG with no transparency. Special provisions for Intruder. idNum must be a constant in System 1.
+	
+	L - L slot: - Loads a saved game from the given slot. Slots 1-26 available. Slot number must be a constant in System 1 and 2.
+	
+	P - P idNum: - Changes the text color to a pre-set palette, selected by idNum. idNum must be a constant.
+	
+	Q - Q slot: - Saves the game in the given slot. Slots 1-26 available. Slot number must be a constant in System 1 and 2.
+	
+	R - R - Newline. Does not use a closing colon.
+	
+	S - S idNum: - Play the music index tied to the ID number, unless idNum is 0, in which case, the game will stop playing music. idNum must be a constant.
+	
+	U - U idNum, colCode: - Loads a CG, including a transparency value (a color code to turn transparent?). Special provisions for Intruder. All parameters must be constant in System 1.
+	
+	X - X idNum: - Displays text variables to the message box by ID number. idNum must be a constant. The System 1 incarnation seems to be used exclusively by D.P.S., which sets the text vars during init. Text variables are otherwise untouchable in System 1. See above for more details. 
+	
+	Y - Y cmdId, param: - The extend command. This does a variety of wildly different things depending on the first parameter, passing the second param to the extend function as a parameter. Unfortunately, each System 1 game has a different set of extend commands, making a "System 1 standard" list impossible. See system3-sdl2 source code for more details. 
+	
+	The following command can be used in every game. It has been backported from System 3.0 to ease localization:
+	
+		240: If param is 1, use hankaku (half-width) and katakana characters in the message and menu boxes. If param is 0, use zankaku (full-width) and hiragana characters. This is equivalent to ZH in System 3.5. Unlike most boolean params, param must be exactly 1 to be true, and anything else is false.
+	
+	The following Y commands are unique to SysEng and are not found in Alicesoft System 1 code. They can be used in any game:
+		
+		242: Command unique to SysEng. Toggles menu font to use either the current variable-width font (param 0) or monospace font (param 1). To change the current font, see Y 244 and Y 246, below.
+		
+		243: Command unique to SysEng. As Y 242, but for the message box. To change the current font, see Y 245 and Y 247, below.
+		
+		244: Command unique to SysEng. Changes the current menu monospace font to either font 0, 1, or 2.
+		
+		245: Command unique to SysEng. As Y 244, but for the message box.
+
+		246: Command unique to SysEng. Changes the current menu variable-width font to either font 0, 1, or 2.
+		
+		247: Command unique to SysEng. As Y 246, but for the message box.
+	
+	Z - Z cmdId, param: - Another Extend command similar to Y, but only used by a small set of games.
+	
+	
+Several other l letters are accounted for in NACT::Execute but do nothing: B, D, E, H, I, J, K, M, N, O, T, V, and W. The 'C' command does not exist even in NACT:Execute and will cause an error if found.
+
+
+
+System 3.0 Command Directory
+
+We're going to jump ahead to System 3.0 because work on System 2 is mostly incomplete.
+
+Several functions in System 3 support "column mode," where X coords can be referred to in how many text columns they take up (a column being 8px wide) rather than pixels. Column mode is disabled by default, but can be adjusted by extend command Y 251. See also the SysEng manual for the "x_coord_override" feature.
+
+System 3.0 supports multiple stack data structures. System 3.5 replaced these with only a single, but far more powerful, stack.
+
+	! - !VARXXXX:val! - cmd_calc. Variable assignment. Variable name goes on the left of the colon, and a value, variable or or equation on the right.  The other formats allowed by System 3.5 do not yet exist.
+	
+	{ - { condition: - cmd_branch. Basically an "if" statement, but with no "else" support, a serious limitation. Seems identical to the implementation in 3.5 otherwise.
+	
+	} - Ends a conditional branch.
+
+	* - *lbl: - label declaration. Marks a label for use with @ and \ commands. Labels must be constant.
+	
+		If examining compiled source (SCO files) with a hex editor, note that * commands do not have a compiled code presence: they are dynamically generated based on @ and \ commands.
+	
+	@ - @lbl: - label_jump. Moves the playhead to the declaration of the given label (*). Labels must be constant.
+	
+	\ - \lbl: - label_call. Moves the playhead to the declaration of the given label, but retains the position of this line in memory. You can return to it via "\0:". The game places previous positions in a stack, so after returning to the most recent \ call, you can return to the one before that, and so on. If \0: is called when the label call stack is empty, it will have no effect. Labels must be constant, and no other numerical values are permitted besides 0.
+	
+	& - &num: - page_jump. Jumps to the top of the given page file, so "&1:" moves to the top of page0001.adv.
+	
+	% - %num: - page_call. As with page_jump, but retains the position of this line in memory, allowing the programmer to return there via %0:. A side effect of this is that it is impossible to page_call to page 0. Some games seem to be aware of this and do as little as possible in page 0, but this is hardly universal.If %0: is called when the page call stack is empty, it will have no effect.
+	
+	$ - Used to set a non-standard menu (one that doesn't rely on verbs and objects) one entry at a time. Basically, you want to put a bunch of these in a continuous block to create a full menu. The format is $label$, followed by lines of code defining the menu item's text, then another line with a standalone $. The most common use case would be:
+
+                $ lbl4000 $
+                'Menu Item'
+                $
+				$ lbl5000 $
+				'Menu Item 2'
+				$
+
+        The code is happy to accept any number of lines between the opening "$ label $" declaration and the ending $. Any command that produces message text, such as H or M commands, can also be used to define a menu in this fashion. For example, the below example produces a menu item labelled "Menu Item 3":
+		
+				!VAR0100:3!
+				$ lbl6000 $
+				'Menu Item '
+				X VAR0100:
+				$
+	
+	[ - [label, verbId, objID: - set_verbobj. Sets a verb-object pair to appear in the default menu. Make sure these commands (and any : commands, below) are placed next to one another in the code to make them part of the same menu. All parameters must be constant.
+	
+	: - :condition, label, verbId, objID: - set_verbobj2, same as the above, but with a condition in front of the three variables. If the condition is not fulfilled, this menu item will not appear. Other than the condition, params must be constant.
+	
+	] - open_menu. Jump to the currently selected menu, either the default (the first verb-obj menu set in the file) or the one recently created by $ commands. If no verb-obj menu exists, and there is no menu set by $ commands, the ] command will jump to the end of the file and immediately exit the game.
+	
+	A - A - End the text box and wait for user input. After the next input, start a new message box. Does not use a closing colon.
+	
+	B - B cmdId, index, p1, p2, p3, p4, p5: - Does a number of things related to either the menu or message box, depending on the cmdId parameter. cmdId must be a constant. B 1 and B 3 support column mode. Each sub-command is nearly identical to the similarly-named commands in 3.5 (so "B 1" in System 3.0 is equal to "B1" in System 3.5), but instead of using width in params 4 and 5, it uses the coordinates of the bottom-right corner.
+
+		1: Set the coordinates of the menu specified by index. p1 and p3 define the top-left corner, p2 and p4 the bottom-right. p5 sets "push," which seems to enable the window: otherwise, it won't be displayed when called. Ayumi-chan's Story ignores p5 and always sets push to true.
+		
+		2: Switch the currently active on-screen menu to the one specified by index. p1 is boolean, determining if the window gets a frame. Other parameters ignored.
+		
+		3: Sets the coordinates of the message box designated by index. Often used with pop-up boxes (Y 7). Parameters as B 1, but without any special provisions for Ayumi-chan.
+		
+		4: Switch the currently active message box to the one specified by index. p2-p4 are ignored. If p5 is 0, open message box. If p5 is any other value, close it.
+	
+	E - E colCode, sx, sy, ex, ey: - Defines the rect used to clear the message box. Supports column mode. Seems to be equivalent to the 3.5 ES command. To manually clear the text box with this rectangle, use extend command Y 1, 1:.
+	
+	F - F - Jumps back to the start of the current file. Does not use a closing colon.
+	
+	G - G idNum: - Loads (and displays) a CG with no transparency.
+	
+	H - H length, num: - Outputs numeric variables to the current output stream. length specifies how many digits are displayed, with 0 displaying the full number. length must be constant. Note the lack of 3.5's HH command, which would display hankaku numerals. To do: Does this mean System 3.0 can't display zankaku numerals, or that it's driven by the current mode (Y 240)?
+	
+	I - I sx, sy, ex, ey, dx, dy: - Used for copying part of an image (the screen?). Supports column mode. Don't yet know what you use the copy for, or how. Probably has an equivalent in the 3.5 V commands, although I can't be certain which one. 
+	
+	J - J x, y: - Sets the CG output coordinate using absolute value. Supports column mode. Seemingly the equivalent of 3.5's J2 rather than J0, as the coordinates remain in memory until adjusted by the next J command.
+	
+	K - K mode: - Gets certain input from the user based on the mode. mode must be constant. Will have to experiment with this, since it's very confusing. Two of the modes seem to have no differences from one another! I'd have to see it in action. Here's what I can deduce about the modes from a quick scan:
+
+		0: Gets mouse input and outputs a newline.
+		
+		1: Tracks mouse coordinates?
+		
+		2 + 3: Tracks mouse coordinates and gets mouse input, and then gets keyboard input?
+		
+		4: Gets keyboard input?
+		
+		5: Gets keyboard input twice?
+		
+		6: Gets keyboard input?
+
+	L - L slot: - Loads a saved game from the given slot. Slots 1-26 are standard. Loading from slot 0 or 101-126 is also permitted, but these are special somehow, with various differences that need investigating (they seem to be used for loading cross-session variables, such as whether the game has been cleared in the past to justify unlocking bonus content). Notably, SAVING to slots 101-126 is NOT permitted.
+	
+	M - M newString: - If tvar_index (set by extend command Y 8) is between 1 and 10, the string assigned to that variable will be changed to match the newString param.
+
+		While the above is the most frequently used purpose of the M command, setting tvar_index to higher indicies also allow the M command to change the file name used for reading active game files by entering a replacement file name, as listed below:
+
+		tvar_index 31 changes the active code file, 32 changes the CG archive, 33 changes the music archive, and 34 the sound effects archive. Sys0Decompiler will combine code archives, so attempts to change code archives (tvar_index 31) should be treated with caution and preferably eliminated.
+	
+	N - N cmd, src, dest: - Unknown, currently does nothing. cmd must be constant. Was originally dummied by Toshiya until his most recent update, which undummied the command and gave the params names, but didn't give the command any actual functionality. Seemingly only used by AmbivalenZ during setup. Presumably isn't necessary for system3-sdl2, but be cautious.
+	
+	O - O mode, val: - Used to pass multiple variables to or from a series of bitwise flags. If mode is 0, "val" is treated as a numeral, as is normal for parameters. In mode 0, O sets 17 variables, B01 through B016, to true or false depending on the result of val compared via bitwise AND over a series of preset, rising hex values from 0x1 through 0x8000. See the source for particulars. If mode is not equal to 0, "val" is treated as a variable index, where 0 = RND, etc. In this mode, O does a sort of reverse version of the above, setting a single variable based on the current status of the above vars.
+	
+		Note that because mode can be a variable or formula, Sys0Decompiler cannot throw errors if the val parameter is not a valid variable index during mode 1. The programmer must mind this detail themselves!
+	
+	P - P index, r, g, b: - Changes the text color using RGB. Note the change from Sys1, allowing direct RGB color selection.
+	
+	Q - Q slot: - Saves the game in the given slot. Slots 1-26 are standard. Saving to slot 0 is also permitted, but this is special somehow. Needs investigating.
+	
+	R - R - Newline. Does not use a closing colon.
+	
+	S - S idNum: - Play the music index tied to the constant ID number, unless idNum is 0, in which case the game will stop playing music. S commands attempt to play local sound files by default, but the Z command can be used to re-assign digits to CD music instead, as described below. idNum must be constant.
+	
+	T - T x, y: - Sets the text output coordinates. Changes are reset by extend command Y 1, so T is basically a single-step, temporary version of B 3 and B 4. Supports column mode.
+	
+	U - U idNum, colCode: - Loads a CG, including a transparency value (the color code to convert to transparency?). Special provisions for Rance 4.1 and 2.
+	
+	V - V mode, index: - Stack operations. System 3.0 has multiple numeral stacks and text stacks, both identified by the given index: V must use both stacks at the same time. In mode 0, sets variables U01-U20 to match indicies 0-20 of the given stack, and then also copy values from the same index of tvar_stack to the active text variables. On any other mode, do the reverse, copying active vars from U01-U20 and the text variables to the given stacks.
+	
+	W - W x, y, colCode: - Similar to a paint bucket tool in a graphics program, targeted at coordinates x and y: the game will try to "flood" neighboring pixels of the same color code with the new colCode. Probably equivalent to the CP command in 3.5.
+	
+	X - X idNum: - Displays text variables to the message box by ID number. 
+	
+	Y - Y cmdId, param: - Extend command. Does a variety of wildly different things depending on the first variable, using the second variable as a parameter. There are a HUGE number of commands, some of which have equivalents in 3.5 under other names. But not all numbers are used. Some of the missing cmdIds explicitly do nothing in TTSys, but most others are simply passed over by the code: this is functionally identical (nothing happens), but the former may imply the command exists in some unimplemented form, so be cautious. Because these functions are quite complex, my explanations may have to rely on TTSys' internal var names to make sense of them.
+	
+		1:	Resets any changes made to the text coords made via T commands, and clears the text box if param is 0. Note the changes from 3.5.
+		
+		2: 	Zeroes a set of variables depending on the param. If param is 0, sets D01-D20 (VAR0001-VAR0020) to 0. If param is 1, set U01-U20 (VAR0021-VAR0040) to 0. If param is 2, set B01-B16 (VAR0041-VAR0056) to 0. Once again, note the changes from 3.5.
+		
+		3:	Wait (param * 1/60th of a seconds) for key input. Y 3, 10001: is instead used as a toggle to modify for future Y 3 calls. It will cause future Y 3 calls to stop waiting as soon as input is confirmed (this will prevent subsequent input from overriding the original). Calls to Y 3, 10000: will manually disable this feature again.
+		
+		4:	Generates a random integer from 1 to param (inclusive). If param is 0 or 1, return 0 (distinct from 3.5).
+		
+		7:  Draws a (filled?) box selected by index. The box should be defined first using the B 3 command and B 4 commands. The default boxes will fill the entire screen if left untouched by B 3 and B 4.
+		
+		8:  Sets tvar_index, which is used by M commands and pop-ups created by Y 27.
+		
+		10: Turns off extract_palette_cg for the param's index, which is checked to see if the game should extract the palette from an image before displaying it. It's not clear why you would want this. Use Y 45 to retrieve extract_palette_cg or to set extract_palette_cg to a variable result.
+		
+		13: Adjusts text wait speed to (param-1) * 1000 / 60. 0 or 1 will both reduce wait speed to 0.
+		
+		14: Sets RND (VAR0000) to 1. Judging from Alicesoft code, this used to have been a test to see if the user had certain hardware based on the param (0 - FM Sound support; 2 - CD drive, etc). TTSys automatically assumes this hardware exists (either because they're standard on modern computers, or because we circumvent the need for them), ergo the command always returns 1 without any checks.
+		
+		16: Stops music. Identical to S 0:.
+		
+		17: If param is 0, sets RND to 1 if music is playing, or 0 if it is not. If param is not 0, sets RND to 0.
+		
+		18: Collects two variables, "mark" and "loop," from the music manager, though I'm not clear what they do. Sets D01 (VAR0001) to the results from "mark," and D02 (VAR0002) to the results from "loop."
+		
+		19: Sets the music's next_loop variable to param.
+		
+		25: Sets the menu font size depending on param. Param 1 = 16pt, 2 = 24, 3 = 32, 4 = 48, or 5 = 64. The program will start at 16pt by default, and will switch back to 16 if given an invalid param.
+		
+			If SysEng receives a param larger than 5, it will attempt to set the font to that point size, so Y 25, 18: will switch to an 18pt version of the current font. If the size fails to load, font will switch to the default 16pt.
+		
+		26: Sets message box font size in an identical fashion to Y 25, above.
+		
+			SysEng features also apply to Y 25.
+		
+		27: Adjusts tvar_maxlen to match the param, and then calls DialogBoxParam to ask the user for a string, which will be assigned to tvar_index. Confusing, needs experimentation.
+		
+		28: If param is 0, set text_space to 2, the default. Otherwise, 0. This seems to adjust the spacing between lines of text.
+		
+		30: If param is 1, set src_screen to 1. Otherwise, 0. Used for offscreen rendering?
+		
+		31: If param is 1, set dest_screen to 1. Otherwise, 0. Used for offscreen rendering?
+		
+		32: Set RND to the parameter, so long as the parameter is below 480. Otherwise, 480.
+		
+		40 or 42: Fade-in effect. No distinction between 40 and 42 (I presume they both fade from black, must check).
+		
+		41 or 43: Fade-out effect. 41 fades to black, 43 to white.
+		
+		45: Set extract_palette to match the boolean param.
+		
+		46: Provides direct control over the variables get_palette, extract_palette and extract_cg using bitwise flags. param & 4 becomes get_palette, param & 2 becomes extract_palette, param & 1 becomes extract_cg.
+		
+		60: Set the variable named "scroll" to match the param and sets flush_screen to false. No idea what either of these entail.
+		
+		61: If param is true, set a pixel (coords (D01, D02) on screen D03) to a new color based on RND. If false, do the reverse by setting RND to the color of the pixel.
+		
+		70: Related to the mouse. If param is 2, seems to get mouse input so long as the mouse is within the box. If param is 3, move the cursor directly like Alicesoft games are so infamous for doing.
+		
+		71: Set mouse_sence [sic] to param. Seems to determine the range the mouse can move before causing the K command to respond to it? Hard to say with the K command, which is such a mess.
+		
+		73: Change the current cursor. 0 is the default arrow cursor.
+		
+		80: If param is 0, set RND to label_depth. If 1, set it to page_depth. These variables are used for keeping track of how "deep" you are when using \ and % commands, respectively.
+		
+		81: If param is 0, reduce label_depth by 1, min 0. If param is 1, adjust page_depth instead. I believe functionally erases the oldest call in the label/page call stack (used by \ and % commands), leaving all subsequent calls intact.
+		
+		82: If param is 0, set label_depth to 0, which I believe functionally erases the entire label call stack. If 1, do the same to page_depth.
+		
+		100: Set RND to param without restrictions (unlike Y 32).
+		
+		101: Set pcm_index to param, for use with Y 102 and 103.
+		
+		102: If pcm_index is valid (i.e. there is a PCM audio file at that index), set the pcm value at that index to param.
+		
+		103: If pcm_index is valid (i.e. there is a PCM audio file at that index), play that PCM (sound/music) file.
+		
+		104: Stop PCM playback.
+		
+		105: Check PCM for some presently unknown property (check if it is playing?), and then return true or false.
+		
+		106: Dummied. Toshiya calls this a "mystery command used in Otome Senki (乙女戦記)". He suspects it's PCM related, but since he doesn't know what it does, it is not supported.
+		
+		221-229: These commands dumps the contents of text vars to the message box, with spaces delineating. Almost certainly used for debugging, since it would create a huge mess (and probably run off the edge of the message box). The commands vary as follows. If you use Y 221, it will dump only text var 1. Y 222 will cause you to dump text vars 1 and 2, and so on to Y 229, which dumps the first 9 text vars. There is no equivalent command to dump all ten text vars.
+		
+		230: Sets clear_text to the boolean param. If active, this seems to cause the message box to clear whenever the menu changes.
+		
+		231: Sets D01 to 640, D02 to either screen height (if param is 1) or 480 (any other param), and D03 to either 256 (most games) or 16 (Alice's Cottage 3 for floppies). This third value probably represents color depth, given similar results from Y 252. This command probably used to do more things that no longer matter on current tools: Rance 4.1 tries to use param 0, 1, and 2, even though TTSys treats params 0 and 2 alike.
+		
+		232: If param is 1, adjusts screen height to 480. Otherwise, 400.
+		
+		234: Sets menu_fix to the boolean param. The variable name probably should have been "menu_fixed," because it causes menu width to be fixed to the value provided by B 1 commands. With it off, menu width is dynamic.
+		
+		236: Sets RND to 1024.
+		
+		238: Sets D01-D07 to clock-related variables: the first six variables represent Year, Month, Day, Hour, Minute, and Second, while D07 represents the day of the week+1. Have to test to see which day of the week is actually 0.
+		
+		239: Similar to Y 238, but using the time in a save file instead of the system clock. Typically used to display the save file's save time on the load menu. If the file does not load, the vars will be set to 0.
+		
+		240: If param is 1, use hankaku (half-width) and katakana characters in the message and menu boxes. If param is 0, use zankaku (full-width) and hiragana characters. This is equivalent to ZH in System 3.5. Unlike most boolean params, param must be exactly 1 to be true, and anything else is false, instead of the reverse.
+		
+		242: Command unique to SysEng. Toggles menu font to use either the current variable-width font (param 0) or monospace font (param 1). To change the current font, see Y 244 and Y 246, below.
+		
+		243: Command unique to SysEng. As Y 242, but for the message box. To change the current font, see Y 245 and Y 247, below.
+		
+		244: Command unique to SysEng. Changes the current menu monospace font to either font 0, 1, or 2.
+		
+		245: Command unique to SysEng. As Y 244, but for the message box.
+
+		246: Command unique to SysEng. Changes the current menu variable-width font to either font 0, 1, or 2.
+		
+		247: Command unique to SysEng. As Y 246, but for the message box.
+		
+		250: Checks the media the game is stored on. Returns 2 if the game is on CD-ROM, otherwise 1. Commented-out code is written in TTSys that can also single out removable drives (floppies or even thumb drives), which would return a 0 if this code is engaged.
+		
+		251: Sets column mode to the INVERSE of the boolean param.
+		
+		252: Sets RND to 8, unless you're playing Alice's Cottage 3 floppy, in which case 4. Originally used to test the computer's available color modes, with 8 indicating 256 colors and 4 presumably indicating 16.
+		
+		253: Sets show_push to the INVERSE of param. This toggles the "Push" icon that appears in the corner of the message box when the game is waiting for user input (typically shows via A commands).
+		
+		254: Sets RND to 0, unless you are playing Alice no Yakata 3 (any version) or Ningyo, in which case 1. This appears to be former operating system detection code. Surprisingly, TTSys' default, 0, tells the game you're playing on PC-98, while 1, the edge case, tells them you're on Windows 3.1. Presumably these games have features that work better when emulating the PC-98 or Win 3.1 respectively. Other deprecated values that will not appear in TTSys, but do appear in Alicesoft code, include: 4 - FM-TOWNS.
+		
+		255: Sounds an error and closes the game. Sets post_quit to the INVERSE of param, and then flags a fatal error regardless.
+		
+	
+	Z - Z cmdId, param: - If cmdId is 0-7, switches various color properties based on the param:
+	
+		0:	Palette bank.
+		1:	Message font color.
+		2:	Menu font color.
+		3: 	Menu frame color.
+		4:	Menu back color.
+		5:	Current message box frame color.
+		6:	Current message box back color.
+		7:	Cursor color.
+		
+			If cmd is between 101-199, it will switch the file attached to CD music IDs in the following fashion. The cmdID indicates the corresponding S command digit + 100, so Z 101 changes the music associated with S 1, and so on. The parameter indicates the track to play on the CD + 1, so a parameter of 1 will play CD track 2. This is because Track 1 on a CD is the data track, so this method is used to avoid trying to play it. Another example: a call to Z 103, 5: would cause future S 3 commands to play track 6 on the CD. If the parameter 0 is used, the corresponding S command will revert to using local music instead of CD music.
+	
+	
+The 'D' command remains unused in System 3.0, and the 'C' command still does not exist and will cause an error.
+
+
+
+System 2 Command Directory
+
+While System 2 coverage is incomplete, the following commands are supported.
+
+Note that System 2 is ALWAYS in "column mode" for applicable commands, where certain x coordinates and widths are multiplied by 8. 
+
+	! - !VARXXXX:val! - cmd_calc. Variable assignment. Variable name goes on the left of the colon, and a value, variable or or equation on the right.  The other formats allowed by System 3.5 do not yet exist.
+	
+	{ - { condition: - cmd_branch. Basically an "if" statement, but with no "else" support, a serious limitation. Seems identical to the implementation in 3.5 otherwise.
+	
+	} - Ends a conditional branch.
+
+	* - *lbl: - label declaration. Marks a label for use with @ and \ commands. Labels must be constant.
+	
+		If examining compiled source (SCO files) with a hex editor, note that * commands do not have a compiled code presence: they are dynamically generated based on @ and \ commands.
+	
+	@ - @lbl: - label_jump. Moves the playhead to the declaration of the given label (*). Labels must be constant.
+	
+	\ - \lbl: - label_call. Moves the playhead to the declaration of the given label, but retains the position of this line in memory. You can return to it via "\0:". The game places previous positions in a stack, so after returning to the most recent \ call, you can return to the one before that, and so on. If \0: is called when the label call stack is empty, it will have no effect. Labels must be constant, and no other numerical values are permitted besides 0.
+	
+	& - &num: - page_jump. Jumps to the top of the given page file, so "&1:" moves to the top of page0001.adv.
+	
+	% - %num: - page_call. As with page_jump, but retains the position of this line in memory, allowing the programmer to return there via %0:. A side effect of this is that it is impossible to page_call to page 0. Some games seem to be aware of this and do as little as possible in page 0, but this is hardly universal. If %0: is called when the page call stack is empty, it will have no effect.
+	
+	$ - Used to set a non-standard menu (one that doesn't rely on verbs and objects) one entry at a time. Basically, you want to put a bunch of these in a continuous block to create a full menu. The format is $label$, followed by lines of code defining the menu item's text, then another line with a standalone $. The most common use case would be:
+
+                $ lbl4000 $
+                'Menu Item'
+                $
+				$ lbl5000 $
+				'Menu Item 2'
+				$
+
+        The code is happy to accept any number of lines between the opening "$ label $" declaration and the ending $. Any command that produces message text, such as H or M commands, can also be used to define a menu in this fashion. For example, the below example produces a menu item labelled "Menu Item 3":
+		
+				!VAR0100:3!
+				$ lbl6000 $
+				'Menu Item '
+				X VAR0100:
+				$
+	
+	[ - [label, verbId, objID: - set_verbobj. Sets a verb-object pair to appear in the default menu. Make sure these commands (and any : commands, below) are placed next to one another in the code to make them part of the same menu. All parameters must be constant.
+	
+	: - :condition, label, verbId, objID: - set_verbobj2, same as the above, but with a condition in front of the three variables. If the condition is not fulfilled, this menu item will not appear. Other than the condition, params must be constant.
+	
+	] - open_menu. Jump to the currently selected menu, either the default (the first verb-obj menu set in the file) or the one recently created by $ commands. If no verb-obj menu exists, and there is no menu set by $ commands, the ] command will jump to the end of the file and immediately exit the game.
+	
+	A - A - End the text box and wait for user input. After the next input, start a new message box. Does not use a closing colon.
+	
+	B - B cmdId, index, p1, p2, p3, p4, p5: - Does a number of things related to either the menu or message box, depending on the cmdId parameter. cmdId must be a constant. B 1 and B 3 support column mode. Each sub-command is nearly identical to the similarly-named commands in 3.5 (so "B 1" in System 3.0 is equal to "B1" in System 3.5), but instead of using width in params 4 and 5, it uses the coordinates of the bottom-right corner.
+
+		1: Set the coordinates of the menu specified by index. p1 and p3 define the top-left corner, p2 and p4 the bottom-right. p5 sets "push," which seems to enable the window: otherwise, it won't be displayed when called. Ayumi-chan's Story Floppy, Ayumi Hint Disk, and Dr. STOP! ignores p5 and always sets push to true.
+		
+		2: Switch the currently active on-screen menu to the one specified by index. p1 is boolean, determining if the window gets a frame. Other parameters ignored. Ayumi Floppy, Ayumi Hint, and Dr. STOP! always display a frame.
+		
+		3: Sets the coordinates of the message box designated by index. Often used with pop-up boxes (Y 7). Parameters as B 1, but without special provisions.
+		
+		4: Switch the currently active message box to the one specified by index. p2-p4 are ignored. If p5 is 0, open message box. If p5 is any other value, close it. Ayumi Floppy, Ayumi Hint, and Dr. STOP! ignore p1 and always use slot 1. Ayumi Floppy and Ayumi Hint (but NOT Dr. STOP!) ignore p5 and always display the message box.
+	
+	F - F - Jumps back to the start of the current file. Does not use a closing colon.
+	
+	G - G idNum: - Loads (and displays) a CG with no transparency. 
+	
+		In Super DPS, G also decreases the current page number by 1 before loading, but only if the playhead is currently in page 20-100 inclusive. After loading, DALK and Rance 3 hint pause the game on certain pages (3 and 25, respectively).
+	
+	H - H length, num: - Outputs numeric variables to the current output stream. length specifies how many digits are displayed, with 0 displaying the full number. length must be constant. Note the lack of 3.5's HH command, which would display hankaku numerals.
+	
+	J - J x, y: - Sets the CG output coordinate using absolute value. Always uses column mode in System 2. Seemingly the equivalent of 3.5's J2 rather than J0, as the coordinates remain in memory until adjusted by the next J command.
+	
+	L - L slot: - Loads a saved game from the given slot. Slots 1-26 available. Slot number must be a constant in System 1 and 2.
+	
+	M - M newString: - If tvar_index (set by extend command Y 8) is between 1 and 10, the string assigned to that variable will be changed to match the newString param. Does not support the extended features available in System 3.0.
+	
+	O - O st, width, height: - Does nothing, although see the end of the document for more details.
+	
+	P - P idNum: - Clearly an incomplete implementation. In Yakata 2, DALK Hint, and Rance 3 hint, changes the text color to match a formula involving the param. In other games, does nothing.
+	
+	Q - Q slot: - Saves the game in the given slot. Slots 1-26 available. Slot number must be a constant in System 1 and 2.
+	
+	R - R - Newline. Does not use a closing colon.
+	
+	S - S idNum: - Play the music index tied to the ID number, unless idNum is 0, in which case, the game will stop playing music. idNum must be a constant.
+	
+	U - U idNum, colCode: - Loads a CG, including a transparency value (a color code to turn transparent?).
+	
+	V - V mode, index, (28x variable params): - Stack operations, very different than System 3.0. mode must be constant. In mode 0, sets the twenty-eight variable params to match indicies 0-27 of the stack ID given as the second parameter, and then also copy values from the same index of tvar_stack to the active text variables. On any other mode, do the reverse, copying the params and the text variables to the given stacks.
+	
+	X - X idNum: - Displays text variables to the message box by ID number. 
+	
+	Y - Y cmdId, param: - Extend command. Does a variety of wildly different things depending on the first variable, using the second variable as a parameter.
+	
+		1:	Resets any changes made to the text coords made via T commands, and clears the text box if param is 0. Note the changes from 3.5.
+		
+		2: 	If param is 0, sets D01-D20 (VAR0001-VAR0020) to 0. If param is 1, set U01-U20 (VAR0021-VAR0040) to 0. If param is 2, set B01-B16 (VAR0041-VAR0056) to 0. Once again, note the changes from 3.5.
+		
+		3:	Wait (param * 1/60th of a seconds). Does not retrieve key input like 3.0 and 3.5.
+		
+		4:	Generates a random integer from 1 to param (inclusive). If param is 0 or 1, return 0.
+		
+		5: Confirmed unnecessary in system3-sdl2. Originally used for image preloading.
+		
+		6: Confirmed unnecessary in system3-sdl2. Examination of the code suggests the function is inconsequential.
+		
+		7:  Draws a box selected by index, which should be defined using the B 3 and B 4 commands. Unlike System 3.0, some boxes appear to be predefined in system3-sdl2's AGS::AGS(). In Maria and Kanpan, this command is disabled for some reason (it would be one thing if Maria and Kanpan outright didn't use the command, but to use the command and have it do nothing?).
+		
+		8:  Sets tvar_index, used exclusively by the M command.
+		
+		14: Sets RND (VAR0000) to 1.
+		
+		26: Sets message box font size depending on param. Param 1 = 16pt, 2 = 24, 3 = 32, 4 = 48, or 5 = 64.  The program will start at 16pt by default, and will switch back to 16 if given an invalid param. Note that no menu equivalent exists like in System 3.0: the System 2 Y 25 serves another, not-yet-implemented purpose involving message boxes.
+		
+			If SysEng receives a param larger than 5, it will attempt to set the font to that point size, so Y 26, 18: will switch to an 18pt version of the current font. If the size fails to load, font will switch to the default 16pt.
+			
+		30: Exists experimentally in SysEng: sets src_screen to match boolean param.
+		
+		31: Exists experimentally in SysEng: sets dest_screen to match boolean param.
+		
+		40 or 42: Fade-in effect. No distinction between 40 and 42 (I presume they both fade from black, must check).
+		
+		41 or 43: Fade-out effect. 41 fades to black, 43 to white.
+		
+		221-229: These commands dumps the contents of text vars to the message box, with spaces delineating. Almost certainly used for debugging, since it would create a huge mess (and probably run off the edge of the message box). The commands vary as follows. If you use Y 221, it will dump only text var 1. Y 222 will cause you to dump text vars 1 and 2, and so on to Y 229, which dumps the first 9 text vars. There is no equivalent command to dump all ten text vars.
+		
+		240: Backported from Sys3.0. If param is 1, use hankaku (half-width) and katakana characters in the message and menu boxes. If param is 0, use zankaku (full-width) and hiragana characters. This is equivalent to ZH in System 3.5. Unlike most boolean params, param must be exactly 1 to be true, and anything else is false.
+		
+		242: Command unique to SysEng. Toggles menu font to use either the current variable-width font (param 0) or monospace font (param 1). To change the current font, see Y 244 and Y 246, below.
+		
+		243: Command unique to SysEng. As Y 242, but for the message box. To change the current font, see Y 245 and Y 247, below.
+		
+		244: Command unique to SysEng. Changes the current menu monospace font to either font 0, 1, or 2.
+		
+		245: Command unique to SysEng. As Y 244, but for the message box.
+
+		246: Command unique to SysEng. Changes the current menu variable-width font to either font 0, 1, or 2.
+		
+		247: Command unique to SysEng. As Y 246, but for the message box.
+		
+		252: Sets RND to 8.
+		
+		253: Wait (do nothing) until key is pressed or released.
+		
+		254: Sets RND to 0.
+		
+		255: Sounds an error and closes the game. Sets post_quit to the INVERSE of param, then flags a fatal error regardless.
+	
+
+Toshiya includes most remaining Sys2 commands, but dummies them, causing them to be skipped over during execution with no code execution except for debug output. That said, the debug output is surprisingly detailed. Their parameters do not always match the ones found in System 3, and the dummied D command is entirely unique to this version. Parameters in the debug output are all identified as "p" (except with the Z command), implying they are filler names. A programmer attempting to localize System 2 games should be aware of these "unused" commands, and Sys0Decompiler should output a warning when they appear.
+
+For completeness' sake, here are the dummied commands and their parameter structure as-written in TTSys. 
+
+	D - D p1, p2, p3, p4, p5, p6, p7, p8: - This command, if it exists, is entirely unique to Sys2.
+	
+	E - E p1, p2, p3: - Does not match param structure for Sys3.0.
+	
+	I - I p1, p2, p3: - Does not match param structure for Sys3.0.
+	
+	J - J p1, p2: - Matches param structure for Sys3.0.
+	
+	K - K - Dummied. Does not use closing colon. Seemingly an input function, like its System 3.0 equivalent, but the lack of a parameter is unusual.
+	
+	N - N p1, p2: - Does not match param structure for Sys3.0.
+	
+	T - T p1, p2, p3: - Does not match param structure for Sys3.0.
+	
+	W - W p1, p2, p3, p4: - Does not match param structure for Sys3.0.
+	
+	Z - Z cmdId, param: - Matches param structure for both Sys1 and 3.0, backed up by a comment block that mentions five Z commands, numbered Z1-Z5.
+	
+	A comment block also mentions several Y commands not found in Sys2: Y11, Y23, Y27 and Y50. Only Y27 exists in Sys3.0.
+	
+As in other versions, the 'C' command does not exist in Sys2 and will cause an error.
+
+
+
+Additional Comments from the Author
+
+As-written, System 1-3.0 do not support comments. SLC's Sys3Decompiler allows you to use semicolons for comments in System 3.5, but it's unclear if that's an original feature. If it is, it proves that Alicesoft erased comments during compilation as late as that version (System 4 does save comments during compilation). I suspect System 1-3.0's unused C command might have originally been used for "C"omments, but that's neither here nor there. Sys0Decompiler might support comments in the future, because it's hard to go without them! For now, I recommend leaving comments in a seperate file.
+
+The System 2 'O' Command: In Super DPS, the O command was used to dynamically draw mosaic censors on top of the existing art. Toshiya implemented this, but later disabled it using comments so that the games could be played uncensored without entering Super DPS's hidden cheat code. The disabled function draws white grid lines of width and height matching the parms, with starting positions based on the first param alone (param mod 80 times 8 for X, div 80 for Y). But just to make things more confusing, this probably isn't the purpose of the O command in other games! For now, just accept that it does nothing.

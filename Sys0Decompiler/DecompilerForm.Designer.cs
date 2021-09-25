@@ -43,12 +43,13 @@
 			this.tlsDiacritic = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsHelpMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.tlsGeneralHelp = new System.Windows.Forms.ToolStripMenuItem();
-			this.tlsDecompileHelp = new System.Windows.Forms.ToolStripMenuItem();
-			this.tlsCompileHelp = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
 			this.tlsAbout = new System.Windows.Forms.ToolStripMenuItem();
 			this.tabCtrlMain = new System.Windows.Forms.TabControl();
 			this.tabDecompile = new System.Windows.Forms.TabPage();
+			this.grpVarFormat = new System.Windows.Forms.GroupBox();
+			this.rdoVAROnly = new System.Windows.Forms.RadioButton();
+			this.rdoFullLabel = new System.Windows.Forms.RadioButton();
 			this.grpDecompileOut = new System.Windows.Forms.GroupBox();
 			this.rdoDecompileOutUTF8 = new System.Windows.Forms.RadioButton();
 			this.rdoDecompileOutShiftJIS = new System.Windows.Forms.RadioButton();
@@ -100,12 +101,10 @@
 			this.btnCompileSrcDir = new System.Windows.Forms.Button();
 			this.txtCompileSrcDir = new System.Windows.Forms.TextBox();
 			this.lblCompileSrcDir = new System.Windows.Forms.Label();
-			this.grpVarFormat = new System.Windows.Forms.GroupBox();
-			this.rdoVAROnly = new System.Windows.Forms.RadioButton();
-			this.rdoFullLabel = new System.Windows.Forms.RadioButton();
 			this.menuStrip1.SuspendLayout();
 			this.tabCtrlMain.SuspendLayout();
 			this.tabDecompile.SuspendLayout();
+			this.grpVarFormat.SuspendLayout();
 			this.grpDecompileOut.SuspendLayout();
 			this.grpDecompileSource.SuspendLayout();
 			this.grpTextMode.SuspendLayout();
@@ -116,7 +115,6 @@
 			this.grpCSource.SuspendLayout();
 			this.grpCompileSysVer.SuspendLayout();
 			this.grpCompileOpts.SuspendLayout();
-			this.grpVarFormat.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// menuStrip1
@@ -220,8 +218,6 @@
 			// 
 			this.tlsHelpMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.tlsGeneralHelp,
-            this.tlsDecompileHelp,
-            this.tlsCompileHelp,
             this.toolStripSeparator3,
             this.tlsAbout});
 			this.tlsHelpMenu.Name = "tlsHelpMenu";
@@ -231,33 +227,19 @@
 			// tlsGeneralHelp
 			// 
 			this.tlsGeneralHelp.Name = "tlsGeneralHelp";
-			this.tlsGeneralHelp.Size = new System.Drawing.Size(159, 22);
+			this.tlsGeneralHelp.Size = new System.Drawing.Size(180, 22);
 			this.tlsGeneralHelp.Text = "General Help";
 			this.tlsGeneralHelp.Click += new System.EventHandler(this.GeneralHelpToolstrip_Click);
-			// 
-			// tlsDecompileHelp
-			// 
-			this.tlsDecompileHelp.Name = "tlsDecompileHelp";
-			this.tlsDecompileHelp.Size = new System.Drawing.Size(159, 22);
-			this.tlsDecompileHelp.Text = "Decompile Help";
-			this.tlsDecompileHelp.Click += new System.EventHandler(this.decompileHelpToolStripMenuItem_Click);
-			// 
-			// tlsCompileHelp
-			// 
-			this.tlsCompileHelp.Name = "tlsCompileHelp";
-			this.tlsCompileHelp.Size = new System.Drawing.Size(159, 22);
-			this.tlsCompileHelp.Text = "Compile Help";
-			this.tlsCompileHelp.Click += new System.EventHandler(this.compileHelpToolStripMenuItem_Click);
 			// 
 			// toolStripSeparator3
 			// 
 			this.toolStripSeparator3.Name = "toolStripSeparator3";
-			this.toolStripSeparator3.Size = new System.Drawing.Size(156, 6);
+			this.toolStripSeparator3.Size = new System.Drawing.Size(177, 6);
 			// 
 			// tlsAbout
 			// 
 			this.tlsAbout.Name = "tlsAbout";
-			this.tlsAbout.Size = new System.Drawing.Size(159, 22);
+			this.tlsAbout.Size = new System.Drawing.Size(180, 22);
 			this.tlsAbout.Text = "About";
 			this.tlsAbout.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
 			// 
@@ -295,6 +277,39 @@
 			this.tabDecompile.TabIndex = 0;
 			this.tabDecompile.Text = "Decompile";
 			this.tabDecompile.UseVisualStyleBackColor = true;
+			// 
+			// grpVarFormat
+			// 
+			this.grpVarFormat.Controls.Add(this.rdoVAROnly);
+			this.grpVarFormat.Controls.Add(this.rdoFullLabel);
+			this.grpVarFormat.Location = new System.Drawing.Point(311, 64);
+			this.grpVarFormat.Name = "grpVarFormat";
+			this.grpVarFormat.Size = new System.Drawing.Size(156, 95);
+			this.grpVarFormat.TabIndex = 15;
+			this.grpVarFormat.TabStop = false;
+			this.grpVarFormat.Text = "Variable Format";
+			// 
+			// rdoVAROnly
+			// 
+			this.rdoVAROnly.AutoSize = true;
+			this.rdoVAROnly.Location = new System.Drawing.Point(9, 43);
+			this.rdoVAROnly.Name = "rdoVAROnly";
+			this.rdoVAROnly.Size = new System.Drawing.Size(115, 17);
+			this.rdoVAROnly.TabIndex = 1;
+			this.rdoVAROnly.Text = "\"VAR\" Labels Only";
+			this.rdoVAROnly.UseVisualStyleBackColor = true;
+			// 
+			// rdoFullLabel
+			// 
+			this.rdoFullLabel.AutoSize = true;
+			this.rdoFullLabel.Checked = true;
+			this.rdoFullLabel.Location = new System.Drawing.Point(9, 20);
+			this.rdoFullLabel.Name = "rdoFullLabel";
+			this.rdoFullLabel.Size = new System.Drawing.Size(89, 17);
+			this.rdoFullLabel.TabIndex = 0;
+			this.rdoFullLabel.TabStop = true;
+			this.rdoFullLabel.Text = "Full Label Set";
+			this.rdoFullLabel.UseVisualStyleBackColor = true;
 			// 
 			// grpDecompileOut
 			// 
@@ -845,39 +860,6 @@
 			this.lblCompileSrcDir.TabIndex = 12;
 			this.lblCompileSrcDir.Text = "Source Directory:";
 			// 
-			// grpVarFormat
-			// 
-			this.grpVarFormat.Controls.Add(this.rdoVAROnly);
-			this.grpVarFormat.Controls.Add(this.rdoFullLabel);
-			this.grpVarFormat.Location = new System.Drawing.Point(311, 64);
-			this.grpVarFormat.Name = "grpVarFormat";
-			this.grpVarFormat.Size = new System.Drawing.Size(156, 95);
-			this.grpVarFormat.TabIndex = 15;
-			this.grpVarFormat.TabStop = false;
-			this.grpVarFormat.Text = "Variable Format";
-			// 
-			// rdoVAROnly
-			// 
-			this.rdoVAROnly.AutoSize = true;
-			this.rdoVAROnly.Location = new System.Drawing.Point(9, 43);
-			this.rdoVAROnly.Name = "rdoVAROnly";
-			this.rdoVAROnly.Size = new System.Drawing.Size(115, 17);
-			this.rdoVAROnly.TabIndex = 1;
-			this.rdoVAROnly.Text = "\"VAR\" Labels Only";
-			this.rdoVAROnly.UseVisualStyleBackColor = true;
-			// 
-			// rdoFullLabel
-			// 
-			this.rdoFullLabel.AutoSize = true;
-			this.rdoFullLabel.Checked = true;
-			this.rdoFullLabel.Location = new System.Drawing.Point(9, 20);
-			this.rdoFullLabel.Name = "rdoFullLabel";
-			this.rdoFullLabel.Size = new System.Drawing.Size(89, 17);
-			this.rdoFullLabel.TabIndex = 0;
-			this.rdoFullLabel.TabStop = true;
-			this.rdoFullLabel.Text = "Full Label Set";
-			this.rdoFullLabel.UseVisualStyleBackColor = true;
-			// 
 			// DecompilerForm
 			// 
 			this.AllowDrop = true;
@@ -895,6 +877,8 @@
 			this.tabCtrlMain.ResumeLayout(false);
 			this.tabDecompile.ResumeLayout(false);
 			this.tabDecompile.PerformLayout();
+			this.grpVarFormat.ResumeLayout(false);
+			this.grpVarFormat.PerformLayout();
 			this.grpDecompileOut.ResumeLayout(false);
 			this.grpDecompileOut.PerformLayout();
 			this.grpDecompileSource.ResumeLayout(false);
@@ -915,8 +899,6 @@
 			this.grpCompileSysVer.PerformLayout();
 			this.grpCompileOpts.ResumeLayout(false);
 			this.grpCompileOpts.PerformLayout();
-			this.grpVarFormat.ResumeLayout(false);
-			this.grpVarFormat.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -927,8 +909,6 @@
 		private System.Windows.Forms.ToolStripMenuItem tlsFileMenu;
 		private System.Windows.Forms.ToolStripMenuItem tlsExit;
 		private System.Windows.Forms.ToolStripMenuItem tlsHelpMenu;
-		private System.Windows.Forms.ToolStripMenuItem tlsDecompileHelp;
-		private System.Windows.Forms.ToolStripMenuItem tlsCompileHelp;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
 		private System.Windows.Forms.ToolStripMenuItem tlsAbout;
 		private System.Windows.Forms.TabControl tabCtrlMain;

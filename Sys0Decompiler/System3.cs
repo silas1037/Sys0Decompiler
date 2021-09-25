@@ -22,7 +22,8 @@ namespace Sys0Decompiler
 			validYCmds = new int[] {
 				1, 2, 3, 4, 7, 8, 10, 13, 14, 16, 17, 18, 19, 25, 26, 27, 28, 30, 31, 32, 40, 41, 42, 43, 45, 46,
 				60, 61, 70, 71, 73, 80, 81, 82, 100, 101, 102, 103, 104, 105, 106, 221, 222, 223, 224, 225, 226, 
-				227, 228, 229, 230, 231, 232, 234, 236, 238, 239, 240, 250, 251, 252, 253, 254, 255
+				227, 228, 229, 230, 231, 232, 234, 236, 238, 239, 240, 242, 243, 244, 245, 246, 247, 250, 
+				251, 252, 253, 254, 255
 			};
 
 			// 54 in System 1, 53 in System 2 and 3.
@@ -1119,8 +1120,8 @@ namespace Sys0Decompiler
 				{
 					RaiseError("Page " + curPage + " includes a call to Y 8, 31:. This " +
 						"is used to switch code archives with subsequent M commands. Sys0Decompiler only creates " +
-						"combined code archives. For this reason, such calls (both the Y and the M) should be " +
-						"eliminated before re-compilation. See the manual for more details.");
+						"combined code archives. For this reason, these calls (both the Y and the M) should be " +
+						"investigated and eliminated before re-compilation. See the manual for more details.");
 				}
 			}
 		}

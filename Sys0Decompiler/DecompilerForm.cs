@@ -552,44 +552,21 @@ namespace Sys0Decompiler
 		{
 			MessageBox.Show("This program is used to decompile Alicesoft System 1, System 2, and System 3.0 data " +
 				"files, and can compile them into a new format for localization. For System 3.5 games, see " +
-				"xsys3c by kichikuo or Sys3Decompiler by SomeLoliCatgirl.\n\nThe program will save your current " +
-				"settings on close and will load on boot.", "General Help");
-		}
-
-		private void decompileHelpToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			MessageBox.Show(this, "Set Source Folder to the folder containing A00.DAT and *DISK.DAT files, such" +
-				"as the game directory, and Destination Folder to the folder that will hold your code files. " +
-				"\n\n*DISK.DAT files must begin with ADISK and proceed in alphabetical order.\n\nYou can extract verbs " +
-				"and objects from AG00.DAT, and pages (code files) from *DISK.DAT files.\n\nDuring gameplay, System 1-" +
-				"3.0 automatically converts hirgana to katakana or vice versa depending on the current text width mode " +
-				"(zankaku for hiragana, hankaku for katakana). During decompilation from Shift-JIS, the user can choose " +
-				"to decompile kana to either hiragana or katakana, or to keep the text in whatever format it had during " +
-				"compilation. Machine translators prefer hiragana text. For readability purposes, ASCII characters will" +
-				"always decompile their hankaku (ASCII) variants. UTF-8 text will always decompile to its current form.",
-				"Decompile Help");
-		}
-
-		private void compileHelpToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			MessageBox.Show(this, "Set Source Folder to the folder containing source code files, and " +
-				"Destination Folder to the folder that will hold your compile AG00.DAT and ADISK.DAT files. " +
-				"\n\n!verbs.adv and !objects.adv will compile to AG00.DAT, and page####.adv files will compile to " +
-				"ADISK.dat. The compile will only create one *DISK file, no matter how many were used in the source. " +
-				"\n\nDuring the compilation process, a temporary directory containing .SCO files will be created. " +
-				"You can choose to have these automatically deleted or retained for debugging purposes.\n\n" +
-				"Compiled ADISK.dat files can only be played by modified System EXEs distributed with this program. " +
-				"Only certain games are fully supported: other games may be require to create a new System EXE " +
-				"that will will work with new games. If created, the programmer is invited to share the modified " +
-				"source to assist fellow localizers.", "Decompile Help");
+				"xsys3c by kichikuou or Sys3Decompiler by SLC.\n\nOnce compiled, source can only be " +
+				"played by specialized executibles, such as system3-sdl2 by kichikuou or SysEng by " +
+				"RottenBlock. Original Alicesoft executibles will not be able to run modified code." +
+				"\n\nSee the included manual, Localization Guide, and Troublshooting Guide for more " +
+				"details.", "General Help");
 		}
 
 		private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			MessageBox.Show("Created by RottenBlock.\n\nThis program is open-source and distributed under the " +
-				"GNU Public License. It could not have been completed without the open-source efforts of Takeda " +
-				"Toshiya, original creator of the open-source, 32-bit System ports; SomeLoliCatgirl, creator of " +
-				"ALDExplorer and Sys3Decompiler; and kichikuou, creator of system3-sdl2 and other AliceSoft tools.");
+			MessageBox.Show("Created by RottenBlock. UTF-8 Compiler created by kichikuou\n\n" +
+				"This program could not have been completed without the open-source efforts of Takeda" +
+				"Toshiya, creator of the original 32-bit System 1-3.0 interpreters, SomeLoliCatgirl, " +
+				"creator of ALDExplorer and Sys3Decompiler; and kichikuou, creator of system3-sdl2 and" +
+				"other AliceSoft tools.\n\nThis program is open-source and distributed under the GNU " +
+				"Public License 2.0.");
 		}
 
 		private void SetDecompileSystemVersion()
@@ -1014,6 +991,10 @@ namespace Sys0Decompiler
 			if(rdoCompileOptAll.Checked) rdoDecompileOptAll.Checked = true;
 			else if(rdoCompileOptPages.Checked) rdoDecompileOptPages.Checked = true;
 			else if(rdoCompileOptVerbobjs.Checked) rdoDecompileOptVerbobjs.Checked = true;
+
+			if(rdoCompileOutShiftJIS.Checked) rdoDecompileSourceShiftJIS.Checked = true;
+			else if(rdoCompileOutUTF8.Checked) rdoDecompileSourceUTF8.Checked = true;
+			DecompileSourceUpdate();
 		}
 
 		private void BtnRevDecompileToCompile_Click(object sender, EventArgs e)
@@ -1028,6 +1009,9 @@ namespace Sys0Decompiler
 			if(rdoDecompileOptAll.Checked) rdoCompileOptAll.Checked = true;
 			else if(rdoDecompileOptPages.Checked) rdoCompileOptPages.Checked = true;
 			else if(rdoDecompileOptVerbobjs.Checked) rdoCompileOptVerbobjs.Checked = true;
+
+			if(rdoDecompileOutShiftJIS.Checked) rdoCompileSourceShiftJIS.Checked = true;
+			else if(rdoDecompileOutUTF8.Checked) rdoCompileSourceUTF8.Checked = true;
 		}
 
 		private void BtnBeginDecompile_Click(object sender, EventArgs e)
